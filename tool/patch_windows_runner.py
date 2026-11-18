@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""يضبط مجلد windows/ الذي يولّده `flutter create` ليصبح البرنامج «BKDash».
+
+يُشغَّل مرة واحدة بعد:
+    flutter create --platforms=windows --project-name bkdash_sanitary_ware --org com.bkdash .
+
+ما يفعله (كل تعديل اختياري؛ إن لم يجد النص المتوقع يكتفي بالتنبيه):
+  * اسم الملف التنفيذي  BKDash.exe  بدل bkdash_sanitary_ware.exe
+  * عنوان النافذة       BKDash
+  * بيانات الملف (Runner.rc): الاسم والوصف
+  * أيقونة البرنامج     tool/assets/app_icon.ico
+"""
+
+from __future__ import annotations
+
+import re
+import shutil
+import sys
+from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+ROOT = Path(__file__).resolve().parent.parent
+WINDOWS = ROOT / "windows"
+OLD = "bkdash_sanitary_ware"
+NEW = "BKDash"
+
+
+def edit(path: Path, pattern: str, replacement: str, label: str) -> None:
+    if not path.exists():
+        print(f"⚠ {label}: الملف غير موجود ({path.relative_to(ROOT)})")
+        return
+    text = path.read_text(encoding="utf-8")
+    updated, count = re.subn(pattern, replacement, text)
+    if count == 0:
+        print(f"⚠ {label}: لم أجد النص المتوقع في {path.relative_to(ROOT)} (ربما عُدّل مسبقاً)")
+        return
+    path.write_text(updated, encoding="utf-8")
+    print(f"✓ {label}")
+
+
+def main() -> int:
+    if not WINDOWS.exists():
+        print("✗ لا يوجد مجلد windows/. شغّل أولاً:")
+        print("    flutter create --platforms=windows --project-name bkdash_sanitary_ware --org com.bkdash .")
+        return 1
+
+    edit(WINDOWS / "CMakeLists.txt",
+         rf'set\(BINARY_NAME\s+"{OLD}"\)', f'set(BINARY_NAME "{NEW}")', "اسم الملف التنفيذي")
+    edit(WINDOWS / "runner" / "main.cpp",
+         rf'window\.Create\(L"{OLD}"', f'window.Create(L"{NEW}"', "عنوان النافذة")
+
+    rc = WINDOWS / "runner" / "Runner.rc"
+    edit(rc, rf'"{OLD}\.exe"', f'"{NEW}.exe"', "OriginalFilename")
+    edit(rc, rf'(VALUE "(?:FileDescription|InternalName|ProductName)",\s*)"{OLD}"', rf'\1"{NEW}"', "وصف الملف")
+
+    icon = ROOT / "tool" / "assets" / "app_icon.ico"
+    target = WINDOWS / "runner" / "resources" / "app_icon.ico"
+    if icon.exists() and target.parent.exists():
+        shutil.copyfile(icon, target)
+        print("✓ الأيقونة")
+    else:
+        print("⚠ الأيقونة: لم أجد tool/assets/app_icon.ico أو مجلد resources")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

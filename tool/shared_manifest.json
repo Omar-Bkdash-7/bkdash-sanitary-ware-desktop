@@ -1,0 +1,134 @@
+{
+  "_comment": "يحدّد أي ملف من مشروع الموبايل يُنسخ حرفياً إلى مشروع سطح المكتب، وأيّها يُستبدل بنسخة مكتوبة لسطح المكتب، وأيّها يُتجاهل. أي ملف جديد في الموبايل لا يطابق أي قاعدة هنا يوقف النسخ حتى تقرر مصيره.",
+  "mobile_package": "bkdash_sanitary_ware",
+  "copy": [
+    "lib/app/app.dart",
+    "lib/app/app_gate.dart",
+    "lib/app/theme/**",
+    "lib/core/constants/**",
+    "lib/core/database/**",
+    "lib/core/errors/**",
+    "lib/core/events/**",
+    "lib/core/formatting/**",
+    "lib/core/presentation/**",
+    "lib/core/services/clock.dart",
+    "lib/core/services/csv_writer.dart",
+    "lib/core/services/file_sharer.dart",
+    "lib/core/storage/**",
+    "lib/core/widgets/**",
+    "lib/features/backup/**",
+    "lib/features/customers/**",
+    "lib/features/desktop_sync/data/**",
+    "lib/features/desktop_sync/models/**",
+    "lib/features/inventory/**",
+    "lib/features/invoices/**",
+    "lib/features/reports/**",
+    "lib/features/security/data/biometric_authenticator.dart",
+    "lib/features/security/data/pin_hasher.dart",
+    "lib/features/security/data/security_repository.dart",
+    "lib/features/security/presentation/**",
+    "lib/features/settings/data/**",
+    "lib/features/settings/models/**",
+    "lib/features/settings/presentation/settings_controller.dart",
+    "lib/features/telegram/**"
+  ],
+  "override": [
+    "lib/main.dart",
+    "lib/app/app_dependencies.dart",
+    "lib/app/home_shell.dart",
+    "lib/features/settings/presentation/settings_screen.dart"
+  ],
+  "skip": [
+    "lib/core/services/share_plus_file_sharer.dart",
+    "lib/features/security/data/local_auth_biometric_authenticator.dart",
+    "lib/features/desktop_sync/presentation/**"
+  ],
+  "copy_tests": [
+    "test/core/**",
+    "test/features/backup/**",
+    "test/features/desktop_sync/**",
+    "test/features/invoices/**",
+    "test/features/reports/**",
+    "test/features/security/**",
+    "test/features/telegram/**",
+    "test/support/**",
+    "test/widgets/**"
+  ],
+  "copy_assets": [
+    "assets/fonts/**",
+    "assets/images/bkdash_icon.png"
+  ],
+  "copy_root_files": [
+    "analysis_options.yaml"
+  ],
+  "text_patches": {
+    "lib/features/security/presentation/lock_screen.dart": [
+      [
+        "بيانات المحل محفوظة على هذا الهاتف فقط",
+        "بيانات المحل محفوظة على هذا الجهاز فقط"
+      ]
+    ],
+    "lib/features/telegram/presentation/telegram_settings_screen.dart": [
+      [
+        "يُخزَّن مشفّراً على الهاتف",
+        "يُخزَّن مشفّراً على هذا الجهاز"
+      ],
+      [
+        "الملفات تُرسل من هاتفك مباشرة إلى Telegram",
+        "الملفات تُرسل من هذا الكمبيوتر مباشرة إلى Telegram"
+      ]
+    ],
+    "lib/features/telegram/data/telegram_service.dart": [
+      [
+        "'الهاتف. انقل النسخة إلى الكمبيوتر بطريقة أخرى.'",
+        "'هذا التطبيق. انقل النسخة بطريقة أخرى (قرص خارجي أو سحابة).'"
+      ]
+    ],
+    "lib/features/backup/presentation/data_tools_screen.dart": [
+      [
+        "تُحفظ النسخة على الهاتف، ويمكنك مشاركتها (واتساب، Drive، بريد) ",
+        "تُحفظ النسخة في مجلد المستندات\\\\BKDash\\\\backups، ويمكنك نسخها إلى قرص خارجي أو سحابة "
+      ],
+      [
+        "إنشاء نسخة ومشاركتها",
+        "إنشاء نسخة وإظهارها في المجلد"
+      ],
+      [
+        "إنشاء نسخة على الهاتف فقط",
+        "إنشاء نسخة داخل المجلد فقط"
+      ],
+      [
+        "حفظ نسخة تلقائية في مجلد التنزيلات",
+        "حفظ نسخة تلقائية بعد كل تعديل"
+      ],
+      [
+        "نسخ في مجلد '",
+        "نسخ في مجلد المستندات\\\\BKDash\\\\AutoBackups '"
+      ],
+      [
+        "${PublicBackupService.folderPath} بعد كل تعديل. ",
+        "بعد كل تعديل. "
+      ],
+      [
+        "ستُحفظ نسخة في مجلد التنزيلات بعد كل تعديل",
+        "ستُحفظ نسخة تلقائية بعد كل تعديل"
+      ],
+      [
+        "أُوقف النسخ التلقائي في مجلد التنزيلات",
+        "أُوقف النسخ التلقائي"
+      ],
+      [
+        "تم إنشاء النسخة الاحتياطية على الهاتف",
+        "تم إنشاء النسخة الاحتياطية"
+      ],
+      [
+        "النسخ المحفوظة على الهاتف (",
+        "النسخ المحفوظة على الكمبيوتر ("
+      ],
+      [
+        "«النسخ المحفوظة على الهاتف»",
+        "«النسخ المحفوظة على الكمبيوتر»"
+      ]
+    ]
+  }
+}

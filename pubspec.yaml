@@ -1,0 +1,54 @@
+name: bkdash_sanitary_ware
+description: بكداش - نسخة سطح المكتب (ويندوز) لنظام إدارة المخزون والفواتير.
+publish_to: 'none'
+version: 1.0.0+1
+
+# اسم الحزمة مطابق عمداً لمشروع الموبايل: تُنسخ ملفاته المشتركة حرفياً
+# (tool/sync_from_mobile.py) دون تعديل أي import.
+
+environment:
+  # نفس قيود مشروع الموبايل (Flutter 3.47.x / Dart 3.13.x).
+  sdk: ^3.10.0
+  flutter: '>=3.38.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management (MVVM: ChangeNotifier + Provider)
+  provider: ^6.1.5+1
+
+  # Local storage. sqflite لا يعمل على ويندوز وحده: يعمل فوق sqflite_common_ffi
+  # (نفس واجهة sqflite، فيبقى كود الموبايل كما هو).
+  sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.3.6
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  shared_preferences: ^2.5.3
+
+  # Security
+  crypto: ^3.0.6
+
+  # Backup / import
+  file_selector: ^1.1.0
+
+  # Reports, secrets, invoice PDF
+  fl_chart: ^1.3.0
+  flutter_secure_storage: ^11.2.0
+  pdf: ^3.13.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/bkdash_icon.png
+    # Arabic invoice PDF (Amiri, SIL OFL - see assets/fonts/Amiri-OFL.txt).
+    - assets/fonts/Amiri-Regular.ttf
+    - assets/fonts/Amiri-Bold.ttf

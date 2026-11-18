@@ -146,7 +146,7 @@ class PhoneSyncService {
     return prepareFromFile(file, source: newest);
   }
 
-  /// Checks [file] (it must be a complete, healthy BKDash database) and compares
+  /// Checks [file] (it must be a complete, healthy Bkdash database) and compares
   /// it with the data here. Nothing is changed.
   Future<PreparedImport> prepareFromFile(
     File file, {

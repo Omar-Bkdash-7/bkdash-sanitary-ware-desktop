@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 /// * [data] holds the live databases. It is a local folder on purpose: the
 ///   Documents folder of Windows is often mirrored by OneDrive, and a sync
 ///   client must never touch a database that is open.
-/// * Every other folder lives under `Documents\BKDash`, where the owner can see
+/// * Every other folder lives under `Documents\Bkdash`, where the owner can see
 ///   it, copy it to a flash drive or let OneDrive keep it.
 final class DesktopPaths {
   const DesktopPaths({
@@ -41,7 +41,7 @@ final class DesktopPaths {
   /// Resolves the folders.
   ///
   /// The three roots exist for tests; the application uses the Windows
-  /// defaults (`%LOCALAPPDATA%\BKDash` and `Documents\BKDash`).
+  /// defaults (`%LOCALAPPDATA%\Bkdash` and `Documents\Bkdash`).
   static Future<DesktopPaths> resolve({
     String? dataRoot,
     String? documentsRoot,
@@ -50,9 +50,9 @@ final class DesktopPaths {
     final dataBase = dataRoot ?? await _defaultDataRoot();
     final documents =
         documentsRoot ??
-        p.join((await getApplicationDocumentsDirectory()).path, 'BKDash');
+        p.join((await getApplicationDocumentsDirectory()).path, 'Bkdash');
     final scratch =
-        tempRoot ?? p.join((await getTemporaryDirectory()).path, 'BKDash');
+        tempRoot ?? p.join((await getTemporaryDirectory()).path, 'Bkdash');
     return DesktopPaths(
       data: Directory(p.join(dataBase, 'data')),
       backups: Directory(p.join(documents, 'backups')),
@@ -82,8 +82,8 @@ final class DesktopPaths {
   static Future<String> _defaultDataRoot() async {
     final local = Platform.environment['LOCALAPPDATA'];
     if (local != null && local.trim().isNotEmpty) {
-      return p.join(local, 'BKDash');
+      return p.join(local, 'Bkdash');
     }
-    return p.join((await getApplicationSupportDirectory()).path, 'BKDash');
+    return p.join((await getApplicationSupportDirectory()).path, 'Bkdash');
   }
 }

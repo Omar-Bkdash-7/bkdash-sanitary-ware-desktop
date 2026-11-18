@@ -46,7 +46,7 @@ class TelegramSettingsController extends BaseController {
     } catch (e, stackTrace) {
       debugPrint('Failed to load telegram settings: $e\n$stackTrace');
       _values = const TelegramSettings();
-      setError('Failed to read saved settings. You can enter the data again.');
+      throw SyncException('Failed to read saved settings. You can enter the data again.');
     }
   });
 

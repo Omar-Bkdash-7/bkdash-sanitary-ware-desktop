@@ -194,7 +194,7 @@ void main() {
     expect(plan.gained.invoices, 1);
   });
 
-  test('a file that is not a BKDash database is refused', () async {
+  test('a file that is not a Bkdash database is refused', () async {
     final desktop = await openDevice('desktop', seed: false);
     final junk = File(p.join(root.path, 'junk.db'))
       ..writeAsStringSync('this is not sqlite');

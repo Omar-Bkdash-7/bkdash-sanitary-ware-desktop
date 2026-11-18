@@ -6,7 +6,7 @@ import 'package:bkdash_sanitary_ware/features/backup/models/public_backup.dart';
 import 'package:path/path.dart' as p;
 
 /// The rolling database copies, kept in an ordinary folder
-/// (`Documents\BKDash\AutoBackups`).
+/// (`Documents\Bkdash\AutoBackups`).
 ///
 /// On the phone this needs MediaStore; on a computer a plain folder is enough,
 /// and it is visible in Explorer, so a copy can be taken to another disk.

@@ -61,7 +61,7 @@ class _DataToolsView extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: Text(
-                  'تُحفظ النسخة في مجلد المستندات\\BKDash\\backups، ويمكنك نسخها إلى قرص خارجي أو سحابة '
+                  'تُحفظ النسخة في مجلد المستندات\\Bkdash\\backups، ويمكنك نسخها إلى قرص خارجي أو سحابة '
                   'لتبقى محفوظة خارج الجهاز.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -102,7 +102,7 @@ class _DataToolsView extends StatelessWidget {
                 title: const Text('حفظ نسخة تلقائية بعد كل تعديل'),
                 subtitle: Text(
                   controller.publicSupported
-                      ? 'يُحفظ آخر ${PublicBackupService.keepLast} نسخ في مجلد المستندات\\BKDash\\AutoBackups '
+                      ? 'يُحفظ آخر ${PublicBackupService.keepLast} نسخ في مجلد المستندات\\Bkdash\\AutoBackups '
                             'بعد كل تعديل. '
                             'المحفوظ الآن: ${controller.publicCopies.length}'
                       : 'غير متاح على هذا الإصدار من أندرويد '

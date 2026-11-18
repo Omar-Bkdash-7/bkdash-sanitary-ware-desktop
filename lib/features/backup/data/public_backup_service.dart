@@ -6,7 +6,7 @@ import 'package:bkdash_sanitary_ware/features/backup/models/public_backup.dart';
 
 /// Keeps the last few database copies in a public folder.
 ///
-/// The copies live in `Downloads/BKDash_Backups`, outside the app, so they
+/// The copies live in `Downloads/Bkdash_Backups`, outside the app, so they
 /// survive uninstalling the app or losing the phone's app data. Nothing here
 /// asks for all-files access: MediaStore owns the folder.
 class PublicBackupService {
@@ -23,7 +23,7 @@ class PublicBackupService {
   static const String enabledKey = 'backups.public_enabled';
 
   /// Where the copies appear on the phone.
-  static const String folderPath = 'Download/BKDash_Backups';
+  static const String folderPath = 'Download/Bkdash_Backups';
 
   final PublicBackupStorage _storage;
   final KeyValueStore _preferences;

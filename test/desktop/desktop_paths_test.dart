@@ -15,7 +15,7 @@ void main() {
 
   Future<DesktopPaths> resolve() => DesktopPaths.resolve(
     dataRoot: p.join(root.path, 'local'),
-    documentsRoot: p.join(root.path, 'docs', 'BKDash'),
+    documentsRoot: p.join(root.path, 'docs', 'Bkdash'),
     tempRoot: p.join(root.path, 'tmp'),
   );
 
@@ -23,15 +23,15 @@ void main() {
     final paths = await resolve();
 
     expect(paths.data.path, p.join(root.path, 'local', 'data'));
-    expect(paths.backups.path, p.join(root.path, 'docs', 'BKDash', 'backups'));
+    expect(paths.backups.path, p.join(root.path, 'docs', 'Bkdash', 'backups'));
     expect(
       paths.autoCopies.path,
-      p.join(root.path, 'docs', 'BKDash', 'AutoBackups'),
+      p.join(root.path, 'docs', 'Bkdash', 'AutoBackups'),
     );
-    expect(paths.exports.path, p.join(root.path, 'docs', 'BKDash', 'exports'));
+    expect(paths.exports.path, p.join(root.path, 'docs', 'Bkdash', 'exports'));
     expect(
       paths.received.path,
-      p.join(root.path, 'docs', 'BKDash', 'received'),
+      p.join(root.path, 'docs', 'Bkdash', 'received'),
     );
     expect(paths.temp.path, p.join(root.path, 'tmp'));
     expect(

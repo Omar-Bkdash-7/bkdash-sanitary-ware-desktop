@@ -28,7 +28,7 @@ Copy-Item -Recurse tmp_runner\windows .\bkdash_desktop\windows
 Remove-Item -Recurse -Force tmp_runner
 cd bkdash_desktop
 
-# 2) (اختياري) اسم BKDash.exe وأيقونة البرنامج
+# 2) (اختياري) اسم Bkdash.exe وأيقونة البرنامج
 python tool\patch_windows_runner.py
 
 # 3) التبعيات + تنسيق + تحليل + اختبارات
@@ -67,13 +67,13 @@ flutter run -d windows
 
 | ماذا | أين |
 |---|---|
-| قاعدة البيانات الحية وطابور Telegram | `%LOCALAPPDATA%\BKDash\data` (محلي عمداً، فلا يلمسه OneDrive وهو مفتوح) |
-| النسخ اليدوية و`before_restore_*` | `Documents\BKDash\backups` |
-| النسخ التلقائية (آخر 10) | `Documents\BKDash\AutoBackups` |
-| ملفات CSV والفواتير المحفوظة | `Documents\BKDash\exports` |
-| ما نُزّل من Telegram | `Documents\BKDash\received` |
+| قاعدة البيانات الحية وطابور Telegram | `%LOCALAPPDATA%\Bkdash\data` (محلي عمداً، فلا يلمسه OneDrive وهو مفتوح) |
+| النسخ اليدوية و`before_restore_*` | `Documents\Bkdash\backups` |
+| النسخ التلقائية (آخر 10) | `Documents\Bkdash\AutoBackups` |
+| ملفات CSV والفواتير المحفوظة | `Documents\Bkdash\exports` |
+| ما نُزّل من Telegram | `Documents\Bkdash\received` |
 
-الإعدادات ← «فتح مجلد الملفات» يفتح `Documents\BKDash`.
+الإعدادات ← «فتح مجلد الملفات» يفتح `Documents\Bkdash`.
 
 ## اختصارات لوحة المفاتيح
 
@@ -85,7 +85,7 @@ flutter run -d windows
 flutter build windows --release
 ```
 
-انسخ **كل** محتويات `build\windows\x64\runner\Release\` إلى اللابتوب (لا الـ exe وحده) وشغّل `BKDash.exe` (أو `bkdash_sanitary_ware.exe` إن لم تشغّل `patch_windows_runner.py`). قد تعرض ويندوز تحذير SmartScreen لأن البرنامج غير موقَّع: «مزيد من المعلومات ← تشغيل على أي حال».
+انسخ **كل** محتويات `build\windows\x64\runner\Release\` إلى اللابتوب (لا الـ exe وحده) وشغّل `Bkdash.exe` (أو `bkdash_sanitary_ware.exe` إن لم تشغّل `patch_windows_runner.py`). قد تعرض ويندوز تحذير SmartScreen لأن البرنامج غير موقَّع: «مزيد من المعلومات ← تشغيل على أي حال».
 
 ## إبقاء الكود مطابقاً للموبايل
 
@@ -112,11 +112,11 @@ python tool\sync_from_mobile.py --mobile ..\bkdash_sanitary_ware           # ا�
 ## استكشاف الأخطاء
 
 * **`Failed to load dynamic library 'sqlite3.dll'`** عند التشغيل: أضف المكتبة المضمَّنة بـ `flutter pub add sqlite3_flutter_libs` ثم أعد البناء؛ أو ضع `sqlite3.dll` (64 بت من sqlite.org) بجانب الـ exe. إن تعارضت إصدارات `sqlite3` عند `pub get` فاحذف السطر الذي أضفته وأرسل لي نص الخطأ.
-* **«نسخة أخرى من بكداش مفتوحة»:** البرنامج يمنع نسختين على قاعدة واحدة. إن لم ترَ نافذة فأنهِ `BKDash.exe` من مدير المهام.
+* **«نسخة أخرى من بكداش مفتوحة»:** البرنامج يمنع نسختين على قاعدة واحدة. إن لم ترَ نافذة فأنهِ `Bkdash.exe` من مدير المهام.
 * **Telegram 401:** رمز البوت خاطئ. **409:** للبوت webhook مفعّل أو برنامج آخر يسحب رسائله (مثل مستورد قديم)؛ أوقفه.
 * **«جلب من Telegram» لا يجد شيئاً:** يجب أن **تعيد توجيه** الملف إلى محادثة البوت (ما يرسله البوت بنفسه لا يستطيع قراءته). الرسائل تبقى 24 ساعة عند Telegram، وبعدها أعد التوجيه.
 * **حجم الملف > 20 ميغابايت:** حدّ Telegram لتنزيل البوتات؛ احفظ الملف يدوياً واستخدم «اختيار ملف».
-* **لا أرى `Documents\BKDash` في مكانه:** إن كان «المستندات» محوَّلاً إلى OneDrive فالمسار تحته؛ استعمل «فتح مجلد الملفات».
+* **لا أرى `Documents\Bkdash` في مكانه:** إن كان «المستندات» محوَّلاً إلى OneDrive فالمسار تحته؛ استعمل «فتح مجلد الملفات».
 
 ## حدود معروفة (بصراحة)
 

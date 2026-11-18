@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""يضبط مجلد windows/ الذي يولّده `flutter create` ليصبح البرنامج «BKDash».
+"""يضبط مجلد windows/ الذي يولّده `flutter create` ليصبح البرنامج «Bkdash».
 
 يُشغَّل مرة واحدة بعد:
     flutter create --platforms=windows --project-name bkdash_sanitary_ware --org com.bkdash .
 
 ما يفعله (كل تعديل اختياري؛ إن لم يجد النص المتوقع يكتفي بالتنبيه):
-  * اسم الملف التنفيذي  BKDash.exe  بدل bkdash_sanitary_ware.exe
-  * عنوان النافذة       BKDash
+  * اسم الملف التنفيذي  Bkdash.exe  بدل bkdash_sanitary_ware.exe
+  * عنوان النافذة       Bkdash
   * بيانات الملف (Runner.rc): الاسم والوصف
   * أيقونة البرنامج     tool/assets/app_icon.ico
 """
@@ -25,7 +25,7 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parent.parent
 WINDOWS = ROOT / "windows"
 OLD = "bkdash_sanitary_ware"
-NEW = "BKDash"
+NEW = "Bkdash"
 
 
 def edit(path: Path, pattern: str, replacement: str, label: str) -> None:

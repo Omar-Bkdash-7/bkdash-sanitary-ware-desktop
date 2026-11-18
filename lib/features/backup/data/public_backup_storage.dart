@@ -20,7 +20,7 @@ abstract interface class PublicBackupStorage {
   Future<void> delete(String id);
 }
 
-/// [PublicBackupStorage] on `Downloads/BKDash_Backups` through MediaStore.
+/// [PublicBackupStorage] on `Downloads/Bkdash_Backups` through MediaStore.
 ///
 /// MediaStore needs no storage permission from Android 10 on, and the folder
 /// is visible in the phone's file manager, so the copy can be moved to a

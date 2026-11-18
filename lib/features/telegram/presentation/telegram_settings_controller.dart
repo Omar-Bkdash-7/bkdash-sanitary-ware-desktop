@@ -7,6 +7,7 @@ import 'package:bkdash_sanitary_ware/features/telegram/data/telegram_service.dar
 import 'package:bkdash_sanitary_ware/features/telegram/data/telegram_settings_store.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/models/backup_caption.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/models/telegram_settings.dart';
+import 'package:flutter/foundation.dart';
 
 /// The "Telegram settings" screen: the bot, the switches and a manual send.
 class TelegramSettingsController extends BaseController {
@@ -40,7 +41,13 @@ class TelegramSettingsController extends BaseController {
   bool get isBusy => _busy;
 
   Future<void> load() => runLoad(() async {
-    _values = await _settings.load();
+    try {
+      _values = await _settings.load();
+    } catch (e, stackTrace) {
+      debugPrint('Failed to load telegram settings: $e\n$stackTrace');
+      _values = const TelegramSettings();
+      setError('Failed to read saved settings. You can enter the data again.');
+    }
   });
 
   Future<void> save(TelegramSettings settings) =>

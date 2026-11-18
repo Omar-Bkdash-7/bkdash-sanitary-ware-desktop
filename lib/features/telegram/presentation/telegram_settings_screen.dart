@@ -4,6 +4,7 @@ import 'package:bkdash_sanitary_ware/core/widgets/app_feedback.dart';
 import 'package:bkdash_sanitary_ware/core/widgets/load_state_view.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/models/telegram_settings.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/presentation/telegram_settings_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,13 +16,18 @@ class TelegramSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<TelegramSettingsController>(
       create: (context) {
-        final deps = context.read<AppDependencies>();
-        return TelegramSettingsController(
-          settings: deps.telegramSettings,
-          service: deps.telegram,
-          snapshots: deps.snapshots,
-          backups: deps.backups,
-        )..load();
+        try {
+          final deps = context.read<AppDependencies>();
+          return TelegramSettingsController(
+            settings: deps.telegramSettings,
+            service: deps.telegram,
+            snapshots: deps.snapshots,
+            backups: deps.backups,
+          )..load();
+        } catch (e, stackTrace) {
+          debugPrint('Failed to create TelegramSettingsController: $e\n$stackTrace');
+          rethrow;
+        }
       },
       child: const _TelegramSettingsView(),
     );

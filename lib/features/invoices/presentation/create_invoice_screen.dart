@@ -95,7 +95,11 @@ class _CreateInvoiceViewState extends State<_CreateInvoiceView> {
     final controller = context.watch<CreateInvoiceController>();
     final draft = controller.draft;
     if (!_bound && controller.status == LoadStatus.ready) {
-      _partialPaid.text = controller.draft.partialPaid.toInputString();
+      // Only set the text if there's an actual value (when editing an existing invoice)
+      // For new invoices, leave it empty instead of showing "0"
+      if (controller.draft.partialPaid.isPositive) {
+        _partialPaid.text = controller.draft.partialPaid.toInputString();
+      }
       _notes.text = controller.draft.notes;
       _bound = true;
     }

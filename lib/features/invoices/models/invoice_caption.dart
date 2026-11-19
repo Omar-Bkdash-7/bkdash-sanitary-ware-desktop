@@ -11,6 +11,8 @@ abstract final class InvoiceCaption {
     return '🧾 فاتورة #${invoice.id}\n'
         '👤 الزبون: ${invoice.customerName}\n'
         '💰 الإجمالي: ${invoice.total.format()}\n'
+        '✅ المدفوع: ${invoice.paid.format()}\n'
+        '⏳ المتبقي: ${invoice.remaining.format()}\n'
         '📅 التاريخ: '
         '${created == null ? invoice.invoiceDate : '${AppDates.display(created)}  ${AppDates.time12(created)}'}';
   }

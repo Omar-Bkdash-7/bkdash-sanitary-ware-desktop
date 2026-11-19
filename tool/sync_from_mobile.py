@@ -232,7 +232,13 @@ def main() -> int:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
 
-    stale = [rel for rel in previous if rel not in expected]
+    # A file that moved from "copy" to "override" is still a desktop file: the
+    # desktop version is the reference now, so it must never be deleted.
+    stale = [
+        rel
+        for rel in previous
+        if rel not in expected and rules.classify_lib(rel) != "override"
+    ]
     for rel in stale:
         drift.append(f"محذوف من الموبايل: {rel}")
         if not args.check and not args.keep_stale:

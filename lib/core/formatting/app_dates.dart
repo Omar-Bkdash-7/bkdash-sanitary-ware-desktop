@@ -85,9 +85,9 @@ abstract final class AppDates {
   static String displayWithWeekday(DateTime date) =>
       '${display(date)} - ${weekday(date)}';
 
-  /// "15:30" - the clock part of a file name (`bkdash_2026-11-02_15:30.db`).
+  /// "15-30" - the clock part of a file name (`bkdash_2026-11-02_15-30.db`).
   static String fileClock(DateTime date) =>
-      '${_two(date.hour)}:${_two(date.minute)}';
+      '${_two(date.hour)}-${_two(date.minute)}';
 
   /// "20261102_153005" - used in file names.
   static String fileStamp(DateTime date) =>

@@ -176,7 +176,7 @@ class _DataToolsView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _Block(
-            title: 'التصدير إلى Excel (CSV)',
+            title: 'التصدير إلى Excel (XLSX)',
             children: [
               for (final kind in ExportKind.values)
                 ListTile(

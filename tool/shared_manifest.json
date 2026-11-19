@@ -36,6 +36,9 @@
     "lib/main.dart",
     "lib/app/app_dependencies.dart",
     "lib/app/home_shell.dart",
+    "lib/features/backup/data/export_service.dart",
+    "lib/features/backup/presentation/data_tools_controller.dart",
+    "lib/features/backup/presentation/data_tools_screen.dart",
     "lib/features/settings/presentation/settings_screen.dart"
   ],
   "skip": [

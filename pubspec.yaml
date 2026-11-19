@@ -34,6 +34,9 @@ dependencies:
   # Backup / import
   file_selector: ^1.1.0
 
+  # The .xlsx export is a zip of XML parts.
+  archive: ^4.7.1
+
   # Reports, secrets, invoice PDF
   fl_chart: ^1.3.0
   flutter_secure_storage: ^11.2.0

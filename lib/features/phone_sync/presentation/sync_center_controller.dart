@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:bkdash_sanitary_ware/core/events/data_change_notifier.dart';
 import 'package:bkdash_sanitary_ware/core/presentation/base_controller.dart';
@@ -9,8 +8,8 @@ import 'package:bkdash_sanitary_ware/features/phone_sync/models/phone_sync_state
 import 'package:bkdash_sanitary_ware/features/telegram/data/sync_queue_store.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/models/sync_job.dart';
 
-/// The "Sync with phone" screen: what was exchanged last, and the buttons that
-/// send the database to the phone or bring the phone's database here.
+/// The "Sync with phone" screen: what was exchanged last, and the button that
+/// sends this computer's database to the phone.
 class SyncCenterController extends BaseController {
   SyncCenterController({
     required PhoneSyncService service,
@@ -65,20 +64,6 @@ class SyncCenterController extends BaseController {
     _info =
         'أُرسلت نسخة كاملة (${event.invoices} فاتورة، '
         '${event.customers} زبون) إلى Telegram.';
-    await _reload();
-  });
-
-  /// Downloads the newest copy the owner forwarded to the bot; `null` when none
-  /// is waiting.
-  Future<PreparedImport?> fetchFromTelegram() =>
-      _guard(_service.fetchLatestFromTelegram);
-
-  Future<PreparedImport> prepareFromFile(File file) =>
-      _guard(() => _service.prepareFromFile(file));
-
-  Future<void> apply(PreparedImport prepared) => _guard(() async {
-    await _service.applyImport(prepared);
-    _info = 'تم استيراد البيانات من «${prepared.plan.fileName}».';
     await _reload();
   });
 

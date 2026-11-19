@@ -70,7 +70,7 @@ flutter run -d windows
 | قاعدة البيانات الحية وطابور Telegram | `%LOCALAPPDATA%\Bkdash\data` (محلي عمداً، فلا يلمسه OneDrive وهو مفتوح) |
 | النسخ اليدوية و`before_restore_*` | `Documents\Bkdash\backups` |
 | النسخ التلقائية (آخر 10) | `Documents\Bkdash\AutoBackups` |
-| ملفات CSV والفواتير المحفوظة | `Documents\Bkdash\exports` |
+| ملفات Excel والفواتير المحفوظة | `Documents\Bkdash\exports` |
 | ما نُزّل من Telegram | `Documents\Bkdash\received` |
 
 الإعدادات ← «فتح مجلد الملفات» يفتح `Documents\Bkdash`.

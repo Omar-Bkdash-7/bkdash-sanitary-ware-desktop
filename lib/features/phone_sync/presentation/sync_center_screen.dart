@@ -1,12 +1,9 @@
-import 'dart:io';
-
 import 'package:bkdash_sanitary_ware/app/app_dependencies.dart';
 import 'package:bkdash_sanitary_ware/core/formatting/app_dates.dart';
 import 'package:bkdash_sanitary_ware/core/widgets/app_feedback.dart';
 import 'package:bkdash_sanitary_ware/core/widgets/load_state_view.dart';
-import 'package:bkdash_sanitary_ware/features/phone_sync/data/phone_sync_service.dart';
+import 'package:bkdash_sanitary_ware/features/backup/presentation/data_tools_screen.dart';
 import 'package:bkdash_sanitary_ware/features/phone_sync/models/phone_sync_state.dart';
-import 'package:bkdash_sanitary_ware/features/phone_sync/presentation/import_plan_dialog.dart';
 import 'package:bkdash_sanitary_ware/features/phone_sync/presentation/sync_center_controller.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/presentation/sync_log_screen.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/presentation/telegram_settings_screen.dart';
@@ -57,7 +54,7 @@ class SyncCenterScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _SendCard(controller: controller),
           const SizedBox(height: 12),
-          _ReceiveCard(controller: controller),
+          const _ReceiveCard(),
           if (controller.info != null) ...[
             const SizedBox(height: 12),
             Text(
@@ -339,9 +336,7 @@ class _SendCard extends StatelessWidget {
 }
 
 class _ReceiveCard extends StatelessWidget {
-  const _ReceiveCard({required this.controller});
-
-  final SyncCenterController controller;
+  const _ReceiveCard();
 
   @override
   Widget build(BuildContext context) {
@@ -365,33 +360,23 @@ class _ReceiveCard extends StatelessWidget {
             const SizedBox(height: 8),
             const Text(
               'الهاتف يرسل نسخة قاعدة بياناته إلى Telegram بعد كل تعديل. '
-              'ليراها هذا البرنامج: في Telegram اختر آخر ملف .db أرسله '
-              'الهاتف واضغط «إعادة توجيه» (Forward) إلى محادثة البوت نفسه، '
-              'ثم اضغط الزر الأول. ويمكنك بدلاً من ذلك حفظ الملف من '
-              'Telegram واختياره بالزر الثاني.',
+              'احفظ آخر ملف .db من Telegram في مجلد التنزيلات، ثم استورده '
+              'من شاشة «النسخ الاحتياطي والتصدير».',
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  onPressed: controller.isBusy || !controller.telegramReady
-                      ? null
-                      : () => _fetch(context),
-                  icon: const Icon(Icons.cloud_download_rounded),
-                  label: const Text('جلب آخر نسخة من Telegram'),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const DataToolsScreen(),
                 ),
-                OutlinedButton.icon(
-                  onPressed: controller.isBusy ? null : () => _pick(context),
-                  icon: const Icon(Icons.folder_open_rounded),
-                  label: const Text('اختيار ملف .db من الكمبيوتر'),
-                ),
-              ],
+              ),
+              icon: const Icon(Icons.restore_rounded),
+              label: const Text('فتح شاشة الاستعادة من ملف'),
             ),
             const SizedBox(height: 8),
             Text(
-              'يسمح Telegram للبوتات بتنزيل ملفات حتى 20 ميغابايت فقط.',
+              'في الشاشة التالية اضغط «استعادة من ملف...» واختر ملف .db '
+              'الذي حفظته من Telegram.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -399,51 +384,6 @@ class _ReceiveCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Future<void> _fetch(BuildContext context) async {
-    PreparedImport? prepared;
-    final ok = await runUiAction(context, () async {
-      prepared = await controller.fetchFromTelegram();
-    });
-    if (!context.mounted) return;
-    final ready = prepared;
-    if (ok && ready == null) {
-      showAppSnackBar(
-        context,
-        'لا توجد نسخة بانتظارك في Telegram. أعد توجيه آخر ملف .db أرسله '
-        'الهاتف إلى محادثة البوت ثم جرّب مرة أخرى.',
-      );
-      return;
-    }
-    if (ready != null) await _confirm(context, ready);
-  }
-
-  Future<void> _pick(BuildContext context) async {
-    File? picked;
-    final ok = await runUiAction(context, () async {
-      picked = await context.read<AppDependencies>().picker.pickBackup();
-    });
-    final file = picked;
-    if (!ok || file == null || !context.mounted) return;
-
-    PreparedImport? prepared;
-    final done = await runUiAction(context, () async {
-      prepared = await controller.prepareFromFile(file);
-    });
-    final ready = prepared;
-    if (!done || ready == null || !context.mounted) return;
-    await _confirm(context, ready);
-  }
-
-  Future<void> _confirm(BuildContext context, PreparedImport prepared) async {
-    final confirmed = await showImportPlanDialog(context, prepared.plan);
-    if (!confirmed || !context.mounted) return;
-    await runUiAction(
-      context,
-      () => controller.apply(prepared),
-      successMessage: 'تم استيراد البيانات بنجاح',
     );
   }
 }

@@ -10,7 +10,7 @@ import 'package:bkdash_sanitary_ware/features/backup/models/backup_file.dart';
 import 'package:bkdash_sanitary_ware/features/backup/models/public_backup.dart';
 import 'package:bkdash_sanitary_ware/features/backup/models/restore_preview.dart';
 
-/// The CSV files the user can export.
+/// The Excel files the user can export.
 enum ExportKind {
   inventory('المخزون'),
   invoices('الفواتير'),
@@ -122,7 +122,7 @@ class DataToolsController extends BaseController {
 
   Future<void> restoreStored(BackupFile backup) => restore(backup.file);
 
-  /// Writes the CSV file of [kind] and opens the share sheet for it.
+  /// Writes the Excel file of [kind] and opens the share sheet for it.
   Future<void> export(ExportKind kind) => _guard(() async {
     final file = switch (kind) {
       ExportKind.inventory => await _exports.exportInventory(),

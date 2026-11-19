@@ -29,7 +29,7 @@ final class DesktopPaths {
   /// The rolling copies kept after every change ("automatic copies" switch).
   final Directory autoCopies;
 
-  /// CSV files and invoice PDFs the user asked to keep.
+  /// Excel files and invoice PDFs the user asked to keep.
   final Directory exports;
 
   /// Snapshots downloaded from Telegram, kept as a record of what was imported.

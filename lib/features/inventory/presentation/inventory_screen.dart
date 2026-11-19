@@ -28,6 +28,9 @@ class InventoryScreen extends StatelessWidget {
         builder: (context) => _InventoryBody(controller: controller),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        // The six sections live in one IndexedStack, so their buttons are all
+        // in the same route. A unique tag keeps the hero transition valid.
+        heroTag: 'inventory-add-item',
         onPressed: () => showItemFormSheet(context, controller: controller),
         icon: const Icon(Icons.add_rounded),
         label: const Text('إضافة صنف'),

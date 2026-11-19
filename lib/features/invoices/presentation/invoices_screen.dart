@@ -24,6 +24,7 @@ class InvoicesScreen extends StatelessWidget {
         builder: (context) => _InvoicesBody(controller: controller),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'invoices-create',
         onPressed: () => _createInvoice(context),
         icon: const Icon(Icons.add_rounded),
         label: const Text('فاتورة جديدة'),

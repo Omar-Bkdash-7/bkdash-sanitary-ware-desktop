@@ -27,6 +27,7 @@ class CustomersScreen extends StatelessWidget {
         builder: (context) => _CustomersBody(controller: controller),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'customers-add',
         onPressed: () => showCustomerFormSheet(
           context,
           onSave: (input) async {

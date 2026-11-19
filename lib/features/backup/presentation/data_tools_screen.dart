@@ -13,13 +13,15 @@ import 'package:provider/provider.dart';
 
 /// Backup, restore and export of the shop data.
 class DataToolsScreen extends StatelessWidget {
-  const DataToolsScreen({super.key});
+  const DataToolsScreen({super.key, this.dependencies});
+
+  final AppDependencies? dependencies;
 
   @override
   Widget build(BuildContext context) {
+    final deps = dependencies ?? Provider.of<AppDependencies>(context, listen: false);
     return ChangeNotifierProvider<DataToolsController>(
-      create: (context) {
-        final deps = context.read<AppDependencies>();
+      create: (_) {
         return DataToolsController(
           backups: deps.backups,
           exports: deps.exports,

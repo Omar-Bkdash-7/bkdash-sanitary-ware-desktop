@@ -4,20 +4,21 @@ import 'package:bkdash_sanitary_ware/core/widgets/app_feedback.dart';
 import 'package:bkdash_sanitary_ware/core/widgets/load_state_view.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/models/telegram_settings.dart';
 import 'package:bkdash_sanitary_ware/features/telegram/presentation/telegram_settings_controller.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 /// The bot token, the chat id, the two automatic switches and a manual send.
 class TelegramSettingsScreen extends StatelessWidget {
-  const TelegramSettingsScreen({super.key});
+  const TelegramSettingsScreen({super.key, this.dependencies});
+
+  final AppDependencies? dependencies;
 
   @override
   Widget build(BuildContext context) {
+    final deps = dependencies ?? Provider.of<AppDependencies>(context, listen: false);
     return ChangeNotifierProvider<TelegramSettingsController>(
-      create: (context) {
+      create: (_) {
         try {
-          final deps = context.read<AppDependencies>();
           return TelegramSettingsController(
             settings: deps.telegramSettings,
             service: deps.telegram,

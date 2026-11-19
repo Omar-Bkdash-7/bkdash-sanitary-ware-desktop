@@ -81,11 +81,14 @@ class SettingsScreen extends StatelessWidget {
               title: const Text('النسخ الاحتياطي والتصدير'),
               subtitle: const Text('نسخة احتياطية، استعادة، تصدير إلى Excel'),
               trailing: const Icon(Icons.chevron_left_rounded),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const DataToolsScreen(),
-                ),
-              ),
+              onTap: () {
+                final deps = context.read<AppDependencies>();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DataToolsScreen(dependencies: deps),
+                  ),
+                );
+              },
             ),
             const Divider(height: 1),
             ListTile(
@@ -121,11 +124,14 @@ class SettingsScreen extends StatelessWidget {
                 'واستيراد نسخة الهاتف',
               ),
               trailing: const Icon(Icons.chevron_left_rounded),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const TelegramSettingsScreen(),
-                ),
-              ),
+              onTap: () {
+                final deps = context.read<AppDependencies>();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => TelegramSettingsScreen(dependencies: deps),
+                  ),
+                );
+              },
             ),
           ],
         ),

@@ -69,7 +69,7 @@ class TelegramSettingsController extends BaseController {
     await _service.sendMessage(
       settings: _values,
       text:
-          '✅ تم ربط تطبيق بكداش بـ Telegram بنجاح.\n'
+          '✅ تم ربط تطبيق بكداش بـ Telegram Desktop بنجاح.\n'
           'ستصل هنا فاتورة كل عملية بيع، ونسخ قاعدة البيانات.',
     );
     _info = 'وصلت رسالة تجريبية إلى Telegram.';

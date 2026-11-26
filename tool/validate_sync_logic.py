@@ -43,12 +43,23 @@ def load_tables() -> dict[str, str]:
     return dict(re.findall(r"static const String (\w+) = '(\w+)';", text))
 
 
-def load_ddl() -> list[str]:
-    text = SCHEMA.read_text(encoding="utf-8")
-    block = text.split("createStatements = <String>[", 1)[1].split("];", 1)[0]
+def statements_of(block: str) -> list[str]:
     statements = []
     for match in re.finditer(r"'''(.*?)'''|'([^'\n]+)'", block, re.S):
         statements.append((match.group(1) or match.group(2)).strip())
+    return statements
+
+
+def load_ddl() -> list[str]:
+    text = SCHEMA.read_text(encoding="utf-8")
+    create = text.split("createStatements = <String>[", 1)[1].split("];", 1)[0]
+    statements = statements_of(create)
+    # createStatements ends with `..._purchaseStatements`; expand that list too.
+    if "..._purchaseStatements" in create:
+        purchases = text.split(
+            "_purchaseStatements = <String>[", 1
+        )[1].split("];", 1)[0]
+        statements.extend(statements_of(purchases))
     return statements
 
 
@@ -83,20 +94,28 @@ def read_keys(conn: sqlite3.Connection) -> dict:
     """نسخة بايثون من DbKeysReader.read (الاستعلامات نفسها تُستخرج من Dart)."""
     tables = load_tables()
     q = extract_queries(tables)
-    assert len(q) == 6, f"متوقع 6 استعلامات في db_keys_reader.dart وُجد {len(q)}"
+    assert len(q) == 10, f"متوقع 10 استعلامات في db_keys_reader.dart وُجد {len(q)}"
     invoices = conn.execute(q[0]).fetchall()
     customers = conn.execute(q[1]).fetchall()
     items = conn.execute(q[2]).fetchall()
     receipts = conn.execute(q[3]).fetchall()
-    newest_invoice = conn.execute(q[4]).fetchone()[0] or ""
-    newest_receipt = conn.execute(q[5]).fetchone()[0] or ""
+    has_purchases = table_exists(conn, tables["purchases"])
+    has_payouts = table_exists(conn, tables["customerPayouts"])
+    purchases = conn.execute(q[4]).fetchall() if has_purchases else []
+    payouts = conn.execute(q[5]).fetchall() if has_payouts else []
+    newest_invoice = conn.execute(q[6]).fetchone()[0] or ""
+    newest_receipt = conn.execute(q[7]).fetchone()[0] or ""
+    newest_purchase = conn.execute(q[8]).fetchone()[0] or "" if has_purchases else ""
+    newest_payout = conn.execute(q[9]).fetchone()[0] or "" if has_payouts else ""
     # الأعمدة بالترتيب نفسه الذي في SELECT داخل Dart
     return {
         "invoices": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}|{r[5]}" for r in invoices},
         "customers": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}" for r in customers},
         "items": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}|{r[5]}|{r[6]}" for r in items},
         "receipts": {f"{r[0]}|{r[1]}|{r[2]}": f"{r[3]}|{r[4]}" for r in receipts},
-        "last": sorted([newest_invoice, newest_receipt])[-1],
+        "purchases": {f"{r[0]}|{r[2]}": f"{r[1]}|{r[3]}|{r[4]}|{r[5]}|{r[6]}|{r[7]}" for r in purchases},
+        "payouts": {f"{r[0]}|{r[1]}|{r[2]}": f"{r[3]}|{r[4]}" for r in payouts},
+        "last": sorted([newest_invoice, newest_receipt, newest_purchase, newest_payout])[-1],
     }
 
 
@@ -108,13 +127,22 @@ def different(a: dict, b: dict) -> int:
     return sum(1 for k, v in a.items() if k in b and b[k] != v)
 
 
+def table_exists(conn: sqlite3.Connection, table: str) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    ).fetchone() is not None
+
+
 def has_user_data(keys: dict) -> bool:
-    return bool(keys["invoices"] or keys["customers"] or keys["receipts"])
+    return bool(
+        keys["invoices"] or keys["customers"] or keys["receipts"]
+        or keys["purchases"] or keys["payouts"]
+    )
 
 
 def plan(local: dict, incoming: dict) -> str:
     """نسخة بايثون حرفية من ImportPlanner.compare."""
-    names = ("invoices", "customers", "items", "receipts")
+    names = ("invoices", "customers", "items", "receipts", "purchases", "payouts")
     lost = sum(missing(local[n], incoming[n]) for n in names)
     gained = sum(missing(incoming[n], local[n]) for n in names)
     changed = sum(different(local[n], incoming[n]) for n in names)
@@ -163,6 +191,30 @@ def add_invoice(conn, at, total=3000, paid=3000, customer="زبون نقدي", i
     return invoice_id
 
 
+def add_purchase(conn, at, customer_id, total=5000, paid=2000, qty=3, item_id=1):
+    conn.execute(
+        "INSERT INTO purchases (customer_id,customer_name,customer_phone,purchase_date,"
+        "created_at,total_cents,paid_cents,notes) VALUES (?,?,?,?,?,?,?,?)",
+        (customer_id, "زبون", "0912", at[:10], at, total, paid, ""),
+    )
+    purchase_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO purchase_items (purchase_id,item_id,item_name,category,sku,unit,"
+        "quantity,unit_cost_cents,previous_quantity,previous_cost_cents)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (purchase_id, item_id, "صنف", "cat", "SKU-1", "قطعة", qty, 1000, 50, 1000),
+    )
+    if paid > 0:
+        conn.execute(
+            "INSERT INTO purchase_payments (purchase_id,payout_id,amount_cents,paid_at,paid_date)"
+            " VALUES (?,NULL,?,?,?)",
+            (purchase_id, paid, at, at[:10]),
+        )
+    conn.execute("UPDATE items SET quantity = quantity + ? WHERE id = ?", (qty, item_id))
+    conn.commit()
+    return purchase_id
+
+
 def copy_db(src: sqlite3.Connection, dst_path: Path) -> sqlite3.Connection:
     """ما يفعله VACUUM INTO ثم الاستعادة: الجهة الأخرى تصبح نسخة مطابقة."""
     if dst_path.exists():
@@ -175,7 +227,7 @@ def run() -> None:
     tables = load_tables()
     print("1) الاستعلامات المستخرجة من db_keys_reader.dart")
     queries = extract_queries(tables)
-    check("عدد الاستعلامات 6", len(queries) == 6, str(len(queries)))
+    check("عدد الاستعلامات 10", len(queries) == 10, str(len(queries)))
 
     tmp = Path(tempfile.mkdtemp())
     phone = new_db(tmp / "phone.db")
@@ -254,12 +306,48 @@ def run() -> None:
     check("سند قبض جديد في الملف = incomingNewer",
           plan(read_keys(same), read_keys(receipt)) == "incomingNewer")
 
-    # 2.8 النسخة المعزولة (VACUUM INTO) سليمة وبنفس المخطط
+    # 2.8 شراء من زبون على الهاتف
+    purchase = copy_db(base, tmp / "purchase.db")
+    cid = purchase.execute("SELECT id FROM customers LIMIT 1").fetchone()[0]
+    add_purchase(purchase, "2026-11-15T10:00:00", cid)
+    check("عملية شراء جديدة في الملف = incomingNewer",
+          plan(read_keys(same), read_keys(purchase)) == "incomingNewer")
+
+    # 2.9 دفعة للزبون بعد الشراء
+    payout = copy_db(purchase, tmp / "payout.db")
+    payout.execute(
+        "INSERT INTO customer_payouts (customer_id,amount_cents,note,paid_at,paid_date)"
+        " VALUES (?,?,?,?,?)", (cid, 500, "", "2026-11-16T10:00:00", "2026-11-16"))
+    payout.execute("UPDATE purchases SET paid_cents = paid_cents + 500 WHERE id = 1")
+    payout.execute(
+        "INSERT INTO purchase_payments (purchase_id,payout_id,amount_cents,paid_at,paid_date)"
+        " VALUES (1,1,500,'2026-11-16T10:00:00','2026-11-16')")
+    payout.commit()
+    check("دفعة للزبون في الملف = incomingNewer",
+          plan(read_keys(purchase), read_keys(payout)) == "incomingNewer")
+
+    # 2.10 شراء سُجِّل هنا فقط: استيراد ملف قديم يحذفه
+    desktop_purchase = copy_db(base, tmp / "desktop_purchase.db")
+    add_purchase(desktop_purchase, "2026-11-17T10:00:00", cid)
+    check("شراء هنا فقط = incomingOlder",
+          plan(read_keys(desktop_purchase), read_keys(same)) == "incomingOlder")
+
+    # 2.11 نسخة version 1 قديمة بلا جداول شراء تُقرأ وتُقارن بلا خطأ
+    legacy = copy_db(base, tmp / "legacy.db")
+    legacy.execute("PRAGMA foreign_keys = OFF")
+    for table in ("purchase_payments", "purchase_items", "customer_payouts", "purchases"):
+        legacy.execute(f"DROP TABLE {table}")
+    legacy.execute("PRAGMA user_version = 1")
+    legacy.commit()
+    check("نسخة v1 بلا جداول شراء تُقارن بأمان",
+          plan(read_keys(same), read_keys(legacy)) == "identical")
+
+    # 2.12 النسخة المعزولة (VACUUM INTO) سليمة وبنفس المخطط
     row = sqlite3.connect(tmp / "base.db").execute("PRAGMA integrity_check").fetchone()[0]
     check("integrity_check للنسخة = ok", row == "ok", row)
     tables_in_copy = {r[0] for r in sqlite3.connect(tmp / "base.db").execute(
         "SELECT name FROM sqlite_master WHERE type='table'")}
-    check("النسخة تحوي الجداول الستة", set(tables.values()) <= tables_in_copy)
+    check("النسخة تحوي الجداول العشرة", set(tables.values()) <= tables_in_copy)
 
     print()
     if failures:

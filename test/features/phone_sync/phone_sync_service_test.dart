@@ -110,6 +110,85 @@ void main() {
     });
   }
 
+  Future<int> addCustomer(AppDatabase database) async {
+    return database.db.insert('customers', <String, Object?>{
+      'name': 'سامر',
+      'phone': '0999',
+      'address': '',
+      'notes': '',
+      'created_at': '2026-11-09T09:00:00',
+    });
+  }
+
+  Future<void> addPurchase(
+    AppDatabase database, {
+    required int customerId,
+    required String createdAt,
+  }) async {
+    final date = createdAt.substring(0, 10);
+    final purchaseId = await database.db.insert('purchases', <String, Object?>{
+      'customer_id': customerId,
+      'customer_name': 'سامر',
+      'customer_phone': '0999',
+      'purchase_date': date,
+      'created_at': createdAt,
+      'total_cents': 6000,
+      'paid_cents': 2000,
+      'notes': '',
+    });
+    await database.db.insert('purchase_items', <String, Object?>{
+      'purchase_id': purchaseId,
+      'item_id': 1,
+      'item_name': 'صنف',
+      'category': 'cat',
+      'sku': 'SKU-1',
+      'unit': 'قطعة',
+      'quantity': 3,
+      'unit_cost_cents': 2000,
+      'previous_quantity': 10,
+      'previous_cost_cents': 1000,
+    });
+    await database.db.insert('purchase_payments', <String, Object?>{
+      'purchase_id': purchaseId,
+      'amount_cents': 2000,
+      'paid_at': createdAt,
+      'paid_date': date,
+    });
+    await database.db.rawUpdate(
+      'UPDATE items SET quantity = quantity + 3 WHERE id = 1',
+    );
+  }
+
+  Future<void> addPayout(
+    AppDatabase database, {
+    required int customerId,
+    required int purchaseId,
+    required String createdAt,
+  }) async {
+    final date = createdAt.substring(0, 10);
+    final payoutId = await database.db.insert(
+      'customer_payouts',
+      <String, Object?>{
+        'customer_id': customerId,
+        'amount_cents': 1000,
+        'note': '',
+        'paid_at': createdAt,
+        'paid_date': date,
+      },
+    );
+    await database.db.insert('purchase_payments', <String, Object?>{
+      'purchase_id': purchaseId,
+      'payout_id': payoutId,
+      'amount_cents': 1000,
+      'paid_at': createdAt,
+      'paid_date': date,
+    });
+    await database.db.rawUpdate(
+      'UPDATE purchases SET paid_cents = paid_cents + 1000 WHERE id = ?',
+      <Object?>[purchaseId],
+    );
+  }
+
   test('a new computer takes the phone data and keeps a safety copy', () async {
     final phone = await openDevice('phone', seed: false);
     await addInvoice(phone.database, '2026-11-10T10:00:00');
@@ -132,6 +211,44 @@ void main() {
     expect(safety, isNotEmpty);
     final state = await desktop.service.loadState();
     expect(state.lastImport?.invoices, 2);
+  });
+
+  test('purchases and payouts travel with the phone copy', () async {
+    final phone = await openDevice('phone', seed: true);
+    final customerId = await addCustomer(phone.database);
+    await addPurchase(
+      phone.database,
+      customerId: customerId,
+      createdAt: '2026-11-10T10:00:00',
+    );
+    final purchaseId =
+        (await phone.database.db.query('purchases')).single['id']! as int;
+    await addPayout(
+      phone.database,
+      customerId: customerId,
+      purchaseId: purchaseId,
+      createdAt: '2026-11-11T10:00:00',
+    );
+    final snapshot = await phone.snapshots.create();
+
+    final desktop = await openDevice('desktop', seed: true);
+    final prepared = await desktop.service.prepareFromFile(snapshot.file);
+
+    expect(prepared.plan.verdict, ImportVerdict.freshLocal);
+    expect(prepared.plan.incoming.purchases, 1);
+    expect(prepared.plan.incomingPayouts, 1);
+
+    await desktop.service.applyImport(prepared);
+
+    final summary = await desktop.backups.summarize();
+    expect(summary.purchases, 1);
+    expect((await desktop.database.db.query('purchases')), hasLength(1));
+    expect(
+      (await desktop.database.db.query('customer_payouts')),
+      hasLength(1),
+    );
+    final state = await desktop.service.loadState();
+    expect(state.lastImport?.purchases, 1);
   });
 
   test('an older file over newer data is flagged before it is imported', () async {

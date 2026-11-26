@@ -6,6 +6,7 @@ import 'package:bkdash_sanitary_ware/features/backup/data/xlsx_exports.dart';
 import 'package:bkdash_sanitary_ware/features/customers/data/customer_repository.dart';
 import 'package:bkdash_sanitary_ware/features/inventory/data/item_repository.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/data/invoice_repository.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/data/purchase_repository.dart';
 import 'package:path/path.dart' as p;
 
 /// Writes the Excel (`.xlsx`) exports to files.
@@ -13,17 +14,20 @@ class ExportService {
   ExportService({
     required ItemRepository items,
     required InvoiceRepository invoices,
+    required PurchaseRepository purchases,
     required CustomerRepository customers,
     required Future<Directory> Function() exportDirectory,
     Clock? clock,
   }) : _items = items,
        _invoices = invoices,
+       _purchases = purchases,
        _customers = customers,
        _exportDirectory = exportDirectory,
        _clock = clock ?? DateTime.now;
 
   final ItemRepository _items;
   final InvoiceRepository _invoices;
+  final PurchaseRepository _purchases;
   final CustomerRepository _customers;
   final Future<Directory> Function() _exportDirectory;
   final Clock _clock;
@@ -37,6 +41,16 @@ class ExportService {
   Future<File> exportInvoiceLines() async => _write(
     'invoice_lines',
     XlsxExports.invoiceLines(await _invoices.getAllLines()),
+  );
+
+  Future<File> exportPurchases() async => _write(
+    'purchases',
+    XlsxExports.purchases(await _purchases.getPurchases()),
+  );
+
+  Future<File> exportPurchaseLines() async => _write(
+    'purchase_lines',
+    XlsxExports.purchaseLines(await _purchases.getAllLines()),
   );
 
   Future<File> exportCustomers() async => _write(

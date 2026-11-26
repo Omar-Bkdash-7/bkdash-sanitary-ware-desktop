@@ -13,10 +13,13 @@ import 'package:bkdash_sanitary_ware/features/customers/presentation/customer_fo
 import 'package:bkdash_sanitary_ware/features/customers/presentation/receive_payment_sheet.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/presentation/invoice_card.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/presentation/invoice_details_screen.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/presentation/create_purchase_screen.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/presentation/purchase_card.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/presentation/purchase_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// The account statement of one customer: totals, invoices and payments.
+/// The account statement of one customer: sales, purchases and every payment.
 class CustomerDetailsScreen extends StatelessWidget {
   const CustomerDetailsScreen({super.key, required this.customerId});
 
@@ -32,6 +35,7 @@ class CustomerDetailsScreen extends StatelessWidget {
           customers: deps.customers,
           invoices: deps.invoices,
           payments: deps.payments,
+          purchases: deps.purchases,
           changes: deps.changes,
         )..load();
       },
@@ -163,44 +167,136 @@ class _Statement extends StatelessWidget {
                   children: [
                     Expanded(
                       child: StatTile(
-                        label: 'المشتريات',
-                        value: MoneyText(summary.totalPurchases),
+                        label: 'المبيعات',
+                        value: MoneyText(summary.totalSales),
                         caption: '${summary.invoiceCount} فاتورة',
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: StatTile(
-                        label: 'المدفوع',
+                        label: 'الشراء من الزبون',
+                        value: MoneyText(summary.totalPurchases),
+                        caption: '${summary.purchaseCount} عملية',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StatTile(
+                        label: 'المقبوض',
                         color: scheme.success,
-                        value: MoneyText(summary.totalPaid),
+                        value: MoneyText(summary.totalReceived),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: StatTile(
-                        label: 'الدين',
-                        color: summary.hasDebt ? scheme.error : scheme.success,
-                        value: MoneyText(summary.debt),
+                        label: 'المدفوع له',
+                        color: scheme.primary,
+                        value: MoneyText(summary.totalPaidToCustomer),
                       ),
                     ),
                   ],
                 ),
-                if (summary.hasDebt) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => _pay(context),
-                      icon: const Icon(Icons.payments_outlined),
-                      label: const Text('تسديد دفعة'),
+                const SizedBox(height: 12),
+                _BalanceBox(summary: summary),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: () => _purchase(context),
+                      icon: const Icon(Icons.shopping_cart_outlined),
+                      label: const Text('شراء جديد'),
+                    ),
+                    if (summary.customerOwes)
+                      OutlinedButton.icon(
+                        onPressed: () => _receive(context),
+                        icon: const Icon(Icons.call_received_rounded),
+                        label: const Text('تسديد دفعة'),
+                      ),
+                    if (summary.weOwe)
+                      OutlinedButton.icon(
+                        onPressed: () => _payout(context),
+                        icon: const Icon(Icons.call_made_rounded),
+                        label: const Text('الدفع للزبون'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'عمليات الشراء من الزبون (${controller.purchases.length})',
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        if (controller.purchases.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: Text('لا توجد عمليات شراء من هذا الزبون')),
+          )
+        else
+          for (final purchase in controller.purchases) ...[
+            PurchaseCard(
+              purchase: purchase,
+              showCustomer: false,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      PurchaseDetailsScreen(purchaseId: purchase.id),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        const SizedBox(height: 8),
+        Text(
+          'الدفعات للزبون (${controller.payouts.length})',
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        if (controller.payouts.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: Text('لم تُسجَّل دفعات للزبون بعد')),
+          )
+        else
+          Card(
+            child: Column(
+              children: [
+                for (var i = 0; i < controller.payouts.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  ListTile(
+                    leading: Icon(
+                      Icons.call_made_rounded,
+                      color: scheme.primary,
+                    ),
+                    title: Text(
+                      AppDates.displayIso(controller.payouts[i].paidAt),
+                    ),
+                    subtitle: Text(
+                      controller.payouts[i].note.isEmpty
+                          ? AppDates.timeIso(controller.payouts[i].paidAt)
+                          : '${AppDates.timeIso(controller.payouts[i].paidAt)}  •  ${controller.payouts[i].note}',
+                    ),
+                    trailing: MoneyText(
+                      controller.payouts[i].amount,
+                      color: scheme.primary,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ],
             ),
           ),
-        ),
         const SizedBox(height: 16),
         Text(
           'الفواتير (${controller.invoices.length})',
@@ -270,15 +366,98 @@ class _Statement extends StatelessWidget {
     );
   }
 
-  Future<void> _pay(BuildContext context) async {
+  Future<void> _purchase(BuildContext context) async {
+    final id = await Navigator.of(context).push<int>(
+      MaterialPageRoute<int>(
+        builder: (_) => CreatePurchaseScreen(customer: summary.customer),
+      ),
+    );
+    if (id != null && context.mounted) {
+      showAppSnackBar(context, 'تم حفظ عملية الشراء #$id');
+    }
+  }
+
+  Future<void> _receive(BuildContext context) async {
     final paid = await showReceivePaymentSheet(
       context,
       customerName: summary.customer.name,
-      debt: summary.debt,
+      debt: summary.amountDue,
       onSubmit: (amount, note) => controller.receivePayment(amount, note: note),
     );
     if (paid == true && context.mounted) {
       showAppSnackBar(context, 'تم تسجيل الدفعة');
     }
+  }
+
+  Future<void> _payout(BuildContext context) async {
+    final paid = await showPayCustomerSheet(
+      context,
+      customerName: summary.customer.name,
+      payable: summary.amountPayable,
+      onSubmit: (amount, note) => controller.payCustomer(amount, note: note),
+    );
+    if (paid == true && context.mounted) {
+      showAppSnackBar(context, 'تم تسجيل الدفع للزبون');
+    }
+  }
+}
+
+class _BalanceBox extends StatelessWidget {
+  const _BalanceBox({required this.summary});
+
+  final CustomerSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final settled = summary.isSettled;
+    final owes = summary.customerOwes;
+    final color = settled
+        ? scheme.success
+        : owes
+        ? scheme.error
+        : scheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            settled
+                ? Icons.verified_outlined
+                : owes
+                ? Icons.call_received_rounded
+                : Icons.call_made_rounded,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              settled
+                  ? 'الحساب خالص'
+                  : owes
+                  ? 'صافي ما على الزبون'
+                  : 'صافي ما للزبون عندنا',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          MoneyText(
+            settled
+                ? summary.netBalance
+                : owes
+                ? summary.amountDue
+                : summary.amountPayable,
+            color: color,
+            fontWeight: FontWeight.bold,
+            style: theme.textTheme.titleLarge,
+          ),
+        ],
+      ),
+    );
   }
 }

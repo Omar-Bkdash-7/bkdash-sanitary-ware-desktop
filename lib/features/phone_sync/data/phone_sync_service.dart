@@ -119,6 +119,7 @@ class PhoneSyncService {
         invoices: summary.invoices,
         customers: summary.customers,
         products: summary.products,
+        purchases: summary.purchases,
       );
       await _writeEvent(lastExportKey, event);
       return event;
@@ -183,6 +184,7 @@ class PhoneSyncService {
         invoices: plan.incoming.invoices,
         customers: plan.incoming.customers,
         products: plan.incoming.products,
+        purchases: plan.incoming.purchases,
         note: plan.verdict.name,
       ),
     );

@@ -4,6 +4,8 @@ import 'package:bkdash_sanitary_ware/features/customers/models/customer.dart';
 import 'package:bkdash_sanitary_ware/features/inventory/models/item.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice_line_export.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase_line_export.dart';
 
 /// Builds the CSV text of each export (no files, no database: easy to test).
 abstract final class CsvExports {
@@ -105,6 +107,67 @@ abstract final class CsvExports {
     return csv.build();
   }
 
+  static String purchases(List<Purchase> purchases) {
+    final csv = CsvWriter()
+      ..writeRow(<Object?>[
+        'رقم الشراء',
+        'التاريخ',
+        'الوقت',
+        'الزبون',
+        'الهاتف',
+        'الإجمالي',
+        'المدفوع',
+        'المتبقي',
+        'ملاحظات',
+      ]);
+    for (final purchase in purchases) {
+      csv.writeRow(<Object?>[
+        purchase.id,
+        AppDates.displayIso(purchase.purchaseDate),
+        AppDates.timeIso(purchase.createdAt),
+        purchase.customerName,
+        purchase.customerPhone,
+        purchase.total.toPlainString(),
+        purchase.paid.toPlainString(),
+        purchase.remaining.toPlainString(),
+        purchase.notes,
+      ]);
+    }
+    return csv.build();
+  }
+
+  static String purchaseLines(List<PurchaseLineExport> lines) {
+    final csv = CsvWriter()
+      ..writeRow(<Object?>[
+        'رقم الشراء',
+        'التاريخ',
+        'الزبون',
+        'الصنف',
+        'اسم المادة',
+        'الرمز',
+        'الوحدة',
+        'الكمية',
+        'سعر الشراء',
+        'إجمالي السطر',
+      ]);
+    for (final entry in lines) {
+      final line = entry.line;
+      csv.writeRow(<Object?>[
+        entry.purchaseId,
+        AppDates.displayIso(entry.purchaseDate),
+        entry.customerName,
+        line.category,
+        line.itemName,
+        line.sku,
+        line.unit,
+        line.quantity,
+        line.unitCost.toPlainString(),
+        line.lineTotal.toPlainString(),
+      ]);
+    }
+    return csv.build();
+  }
+
   static String customers(List<CustomerSummary> customers) {
     final csv = CsvWriter()
       ..writeRow(<Object?>[
@@ -112,9 +175,12 @@ abstract final class CsvExports {
         'الهاتف',
         'العنوان',
         'عدد الفواتير',
-        'إجمالي المشتريات',
-        'المدفوع',
-        'الدين المتبقي',
+        'إجمالي المبيعات',
+        'المقبوض',
+        'عدد عمليات الشراء',
+        'إجمالي المشتريات من الزبون',
+        'المدفوع للزبون',
+        'صافي الرصيد',
       ]);
     for (final summary in customers) {
       csv.writeRow(<Object?>[
@@ -122,9 +188,12 @@ abstract final class CsvExports {
         summary.customer.phone,
         summary.customer.address,
         summary.invoiceCount,
+        summary.totalSales.toPlainString(),
+        summary.totalReceived.toPlainString(),
+        summary.purchaseCount,
         summary.totalPurchases.toPlainString(),
-        summary.totalPaid.toPlainString(),
-        summary.debt.toPlainString(),
+        summary.totalPaidToCustomer.toPlainString(),
+        summary.netBalance.toPlainString(),
       ]);
     }
     return csv.build();

@@ -26,18 +26,24 @@ abstract final class ImportPlanner {
       customers: _missing(local.customers, incoming.customers),
       items: _missing(local.items, incoming.items),
       receipts: _missing(local.receipts, incoming.receipts),
+      purchases: _missing(local.purchases, incoming.purchases),
+      payouts: _missing(local.payouts, incoming.payouts),
     );
     final gained = RecordTally(
       invoices: _missing(incoming.invoices, local.invoices),
       customers: _missing(incoming.customers, local.customers),
       items: _missing(incoming.items, local.items),
       receipts: _missing(incoming.receipts, local.receipts),
+      purchases: _missing(incoming.purchases, local.purchases),
+      payouts: _missing(incoming.payouts, local.payouts),
     );
     final changed = RecordTally(
       invoices: _different(local.invoices, incoming.invoices),
       customers: _different(local.customers, incoming.customers),
       items: _different(local.items, incoming.items),
       receipts: _different(local.receipts, incoming.receipts),
+      purchases: _different(local.purchases, incoming.purchases),
+      payouts: _different(local.payouts, incoming.payouts),
     );
 
     final ImportVerdict verdict;
@@ -62,6 +68,8 @@ abstract final class ImportPlanner {
       incoming: incomingSummary,
       currentReceipts: local.receipts.length,
       incomingReceipts: incoming.receipts.length,
+      currentPayouts: local.payouts.length,
+      incomingPayouts: incoming.payouts.length,
       lost: lost,
       gained: gained,
       changed: changed,

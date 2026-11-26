@@ -3,15 +3,17 @@ import 'package:bkdash_sanitary_ware/core/database/db_schema.dart';
 import 'package:bkdash_sanitary_ware/core/database/row_reader.dart';
 import 'package:bkdash_sanitary_ware/core/formatting/money.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/data/invoice_repository.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/data/purchase_repository.dart';
 import 'package:bkdash_sanitary_ware/features/reports/models/report_models.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Runs the aggregate queries behind the reports screen.
 class ReportRepository {
-  ReportRepository(this._database, this._invoices);
+  ReportRepository(this._database, this._invoices, this._purchases);
 
   final AppDatabase _database;
   final InvoiceRepository _invoices;
+  final PurchaseRepository _purchases;
 
   /// A range longer than this is charted per month instead of per day.
   static const int _maxDailyPoints = 62;
@@ -33,6 +35,7 @@ class ReportRepository {
       categories: await _categories(from, to),
       topItems: await _topItems(from, to),
       invoices: await _invoices.getInvoices(fromDate: from, toDate: to),
+      purchases: await _purchases.getPurchases(fromDate: from, toDate: to),
     );
   }
 
@@ -53,13 +56,32 @@ class ReportRepository {
         <Object?>[from, to],
       ),
     );
+    final buybacks = await db.rawQuery(
+      'SELECT COUNT(*) AS purchase_count, '
+      'IFNULL(SUM(total_cents), 0) AS purchases_cents, '
+      'IFNULL(SUM(total_cents - paid_cents), 0) AS payables_cents '
+      'FROM ${DbTables.purchases} WHERE purchase_date BETWEEN ? AND ?',
+      <Object?>[from, to],
+    );
+    final paidToCustomers = Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT IFNULL(SUM(amount_cents), 0) FROM ${DbTables.purchasePayments} '
+        'WHERE paid_date BETWEEN ? AND ?',
+        <Object?>[from, to],
+      ),
+    );
     final row = sales.first;
+    final buyback = buybacks.first;
     return ReportSummary(
       invoiceCount: row.readInt('invoice_count'),
       sales: Money(row.readInt('sales_cents')),
       profit: Money(row.readInt('profit_cents')),
       collected: Money(collected ?? 0),
       outstanding: Money(row.readInt('outstanding_cents')),
+      purchaseCount: buyback.readInt('purchase_count'),
+      purchases: Money(buyback.readInt('purchases_cents')),
+      paidToCustomers: Money(paidToCustomers ?? 0),
+      payables: Money(buyback.readInt('payables_cents')),
     );
   }
 

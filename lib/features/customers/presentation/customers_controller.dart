@@ -7,43 +7,57 @@ import 'package:bkdash_sanitary_ware/core/presentation/base_controller.dart';
 import 'package:bkdash_sanitary_ware/features/customers/data/customer_repository.dart';
 import 'package:bkdash_sanitary_ware/features/customers/models/customer.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/data/payment_repository.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/data/purchase_repository.dart';
 
 class CustomersController extends BaseController {
   CustomersController({
     required CustomerRepository customers,
     required PaymentRepository payments,
+    required PurchaseRepository purchases,
     required DataChangeNotifier changes,
   }) : _customers = customers,
        _payments = payments,
+       _purchases = purchases,
        _changes = changes {
     _changes.addListener(_onDataChanged);
   }
 
   final CustomerRepository _customers;
   final PaymentRepository _payments;
+  final PurchaseRepository _purchases;
   final DataChangeNotifier _changes;
 
   List<CustomerSummary> _all = const <CustomerSummary>[];
   String _query = '';
-  bool _onlyDebtors = false;
+  bool _onlyOpen = false;
 
   List<CustomerSummary> get all => _all;
-  bool get onlyDebtors => _onlyDebtors;
+  bool get onlyOpen => _onlyOpen;
 
   List<CustomerSummary> get visible {
     final query = normalizeForSearch(_query);
     return _all.where((summary) {
-      if (_onlyDebtors && !summary.hasDebt) return false;
+      if (_onlyOpen && !summary.hasBalance) return false;
       if (query.isEmpty) return true;
       return normalizeForSearch(summary.customer.name).contains(query) ||
           summary.customer.phone.contains(query);
     }).toList();
   }
 
-  /// What all customers owe together.
-  Money get totalDebt => Money.sum(_all.map((summary) => summary.debt));
+  /// What all customers owe the shop (positive net balances only).
+  Money get totalReceivable =>
+      Money.sum(_all.map((summary) => summary.amountDue));
 
-  int get debtorCount => _all.where((summary) => summary.hasDebt).length;
+  /// What the shop owes all customers (negative net balances only).
+  Money get totalPayable =>
+      Money.sum(_all.map((summary) => summary.amountPayable));
+
+  /// The two sides together; positive means the customers owe more.
+  Money get netBalance => totalReceivable - totalPayable;
+
+  int get debtorCount => _all.where((summary) => summary.customerOwes).length;
+
+  int get creditorCount => _all.where((summary) => summary.weOwe).length;
 
   Future<void> load() => runLoad(() async {
     _all = await _customers.getAllWithSummary();
@@ -54,8 +68,8 @@ class CustomersController extends BaseController {
     notifyListeners();
   }
 
-  void setOnlyDebtors({required bool value}) {
-    _onlyDebtors = value;
+  void setOnlyOpen({required bool value}) {
+    _onlyOpen = value;
     notifyListeners();
   }
 
@@ -71,6 +85,16 @@ class CustomersController extends BaseController {
     required Money amount,
     String note = '',
   }) => _payments.receiveCustomerPayment(
+    customerId: customerId,
+    amount: amount,
+    note: note,
+  );
+
+  Future<void> payCustomer({
+    required int customerId,
+    required Money amount,
+    String note = '',
+  }) => _purchases.payCustomer(
     customerId: customerId,
     amount: amount,
     note: note,

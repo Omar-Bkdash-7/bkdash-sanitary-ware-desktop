@@ -84,7 +84,15 @@ final class AppDatabase {
     Database db,
     int oldVersion,
     int newVersion,
-  ) async {}
+  ) async {
+    final batch = db.batch();
+    if (oldVersion < 2) {
+      for (final statement in DbSchema.upgradeTo2) {
+        batch.execute(statement);
+      }
+    }
+    await batch.commit(noResult: true);
+  }
 
   /// Copies an old database aside before its schema is upgraded.
   ///
@@ -175,10 +183,23 @@ final class AppDatabase {
     invoices: await _count(database, DbTables.invoices),
     customers: await _count(database, DbTables.customers),
     products: await _count(database, DbTables.items),
+    purchases: await _countIfTable(database, DbTables.purchases),
     schemaVersion:
         Sqflite.firstIntValue(await database.rawQuery('PRAGMA user_version')) ??
         0,
   );
+
+  /// Counts [table] when the file has it; old backups do not know purchases.
+  static Future<int> _countIfTable(
+    DatabaseExecutor database,
+    String table,
+  ) async {
+    final rows = await database.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      <Object?>[table],
+    );
+    return rows.isEmpty ? 0 : _count(database, table);
+  }
 
   /// Counts inside a backup file, opened read only.
   static Future<DataSummary> summarizeBackupFile(
@@ -302,7 +323,7 @@ final class AppDatabase {
         "SELECT name FROM sqlite_master WHERE type = 'table'",
       );
       final tables = rows.map((row) => row['name']).toSet();
-      if (!DbTables.all.every(tables.contains)) {
+      if (!DbTables.requiredForVersion(version).every(tables.contains)) {
         throw const BackupException(
           'النسخة الاحتياطية ناقصة أو من برنامج آخر.',
         );

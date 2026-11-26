@@ -1,10 +1,12 @@
 import 'package:bkdash_sanitary_ware/core/database/app_database.dart';
 import 'package:bkdash_sanitary_ware/core/database/db_schema.dart';
 import 'package:bkdash_sanitary_ware/core/database/row_reader.dart';
+import 'package:bkdash_sanitary_ware/core/errors/app_exception.dart';
 import 'package:bkdash_sanitary_ware/core/events/data_change_notifier.dart';
 import 'package:bkdash_sanitary_ware/core/formatting/app_dates.dart';
 import 'package:bkdash_sanitary_ware/core/formatting/money.dart';
 import 'package:bkdash_sanitary_ware/core/services/clock.dart';
+import 'package:bkdash_sanitary_ware/features/customers/data/customer_balance_query.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/payment_allocator.dart';
 
@@ -30,6 +32,16 @@ class PaymentRepository {
     final paidDate = AppDates.isoDate(now);
 
     await _database.db.transaction((txn) async {
+      final net = await CustomerBalanceQuery.net(txn, customerId);
+      if (!net.isPositive) {
+        throw const ValidationException('لا توجد ذمم مستحقة على هذا الزبون.');
+      }
+      if (amount > net) {
+        throw ValidationException(
+          'المبلغ أكبر من صافي المستحق على الزبون (${net.format()}).',
+        );
+      }
+
       final rows = await txn.rawQuery(
         'SELECT id, total_cents - paid_cents AS remaining_cents '
         'FROM ${DbTables.invoices} '

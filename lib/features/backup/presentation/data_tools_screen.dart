@@ -257,14 +257,19 @@ class _DataToolsView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'ستُستبدل كل البيانات الحالية (المخزون والزبائن '
-                'والفواتير) ببيانات النسخة المحددة:',
+                'ستُستبدل كل البيانات الحالية (المخزون والزبائن والفواتير '
+                'والشراء من الزبائن) ببيانات النسخة المحددة:',
               ),
               const SizedBox(height: 14),
               _CountRow(
                 label: 'الفواتير',
                 current: preview.current.invoices,
                 incoming: preview.incoming.invoices,
+              ),
+              _CountRow(
+                label: 'عمليات الشراء',
+                current: preview.current.purchases,
+                incoming: preview.incoming.purchases,
               ),
               _CountRow(
                 label: 'الزبائن',

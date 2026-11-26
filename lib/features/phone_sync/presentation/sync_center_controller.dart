@@ -48,11 +48,14 @@ class SyncCenterController extends BaseController {
 
   bool get isBusy => _busy;
 
-  /// This computer has neither sales nor customers: the first thing to do is to
-  /// bring the phone's data here.
+  /// This computer has no sales, customers or purchases yet: the first thing
+  /// to do is to bring the phone's data here.
   bool get looksUnused {
     final summary = _summary;
-    return summary != null && summary.invoices == 0 && summary.customers == 0;
+    return summary != null &&
+        summary.invoices == 0 &&
+        summary.customers == 0 &&
+        summary.purchases == 0;
   }
 
   Future<void> load() => runLoad(_reload);
@@ -63,7 +66,7 @@ class SyncCenterController extends BaseController {
     final event = await _service.sendSnapshotNow();
     _info =
         'أُرسلت نسخة كاملة (${event.invoices} فاتورة، '
-        '${event.customers} زبون) إلى Telegram.';
+        '${event.customers} زبون، ${event.purchases} شراء) إلى Telegram.';
     await _reload();
   });
 

@@ -1,13 +1,13 @@
 name: bkdash_sanitary_ware
-description: بكداش - نسخة سطح المكتب (ويندوز) لنظام إدارة المخزون والفواتير.
+description: Bkdash - Desktop Version (Windows) for Inventory and Invoicing Management.
 publish_to: 'none'
 version: 1.0.0+1
 
-# اسم الحزمة مطابق عمداً لمشروع الموبايل: تُنسخ ملفاته المشتركة حرفياً
-# (tool/sync_from_mobile.py) دون تعديل أي import.
+# The package name is intentionally identical to that of the mobile project: its shared files are copied verbatim
+# (tool/sync_from_mobile.py) without modifying any imports.
 
 environment:
-  # نفس قيود مشروع الموبايل (Flutter 3.47.x / Dart 3.13.x).
+  # The same constraints as the mobile project(Flutter 3.47.x / Dart 3.13.x).
   sdk: ^3.10.0
   flutter: '>=3.38.0'
 
@@ -20,8 +20,8 @@ dependencies:
   # State management (MVVM: ChangeNotifier + Provider)
   provider: ^6.1.5+1
 
-  # Local storage. sqflite لا يعمل على ويندوز وحده: يعمل فوق sqflite_common_ffi
-  # (نفس واجهة sqflite، فيبقى كود الموبايل كما هو).
+  # Local storage. `sqflite` does not work on Windows on its own; it operates on top of `sqflite_common_ffi`.
+  # (It uses the same interface as `sqflite`, so the mobile code remains unchanged.)
   sqflite: ^2.4.2
   sqflite_common_ffi: ^2.3.6
   path: ^1.9.1

@@ -15,32 +15,107 @@ Future<bool?> showReceivePaymentSheet(
   required Money debt,
   required Future<void> Function(Money amount, String note) onSubmit,
 }) {
+  return _showPaymentSheet(
+    context,
+    title: 'تسديد دفعة',
+    customerName: customerName,
+    balanceLabel: 'الدين الحالي',
+    maxAmount: debt,
+    amountLabel: 'المبلغ المدفوع',
+    fullAmountLabel: 'كامل الدين',
+    hint: 'تُوزَّع الدفعة على أقدم الفواتير غير المسددة أولاً.',
+    submitLabel: 'تسجيل الدفعة',
+    emphasizePayment: true,
+    onSubmit: onSubmit,
+  );
+}
+
+/// Records money paid to a customer for purchases. Closes with `true` on
+/// success.
+///
+/// [onSubmit] stores the payment; an [AppException] it throws is shown inside
+/// the sheet.
+Future<bool?> showPayCustomerSheet(
+  BuildContext context, {
+  required String customerName,
+  required Money payable,
+  required Future<void> Function(Money amount, String note) onSubmit,
+}) {
+  return _showPaymentSheet(
+    context,
+    title: 'الدفع للزبون',
+    customerName: customerName,
+    balanceLabel: 'المستحق للزبون',
+    maxAmount: payable,
+    amountLabel: 'المبلغ المدفوع للزبون',
+    fullAmountLabel: 'كامل المستحق',
+    hint: 'يُوزَّع المبلغ على أقدم عمليات الشراء غير المسددة أولاً.',
+    submitLabel: 'تسجيل الدفع',
+    emphasizePayment: false,
+    onSubmit: onSubmit,
+  );
+}
+
+Future<bool?> _showPaymentSheet(
+  BuildContext context, {
+  required String title,
+  required String customerName,
+  required String balanceLabel,
+  required Money maxAmount,
+  required String amountLabel,
+  required String fullAmountLabel,
+  required String hint,
+  required String submitLabel,
+  required bool emphasizePayment,
+  required Future<void> Function(Money amount, String note) onSubmit,
+}) {
   return showFormSheet<bool>(
     context,
-    builder: (_) => _ReceivePaymentForm(
+    builder: (_) => _PaymentForm(
+      title: title,
       customerName: customerName,
-      debt: debt,
+      balanceLabel: balanceLabel,
+      maxAmount: maxAmount,
+      amountLabel: amountLabel,
+      fullAmountLabel: fullAmountLabel,
+      hint: hint,
+      submitLabel: submitLabel,
+      emphasizePayment: emphasizePayment,
       onSubmit: onSubmit,
     ),
   );
 }
 
-class _ReceivePaymentForm extends StatefulWidget {
-  const _ReceivePaymentForm({
+class _PaymentForm extends StatefulWidget {
+  const _PaymentForm({
+    required this.title,
     required this.customerName,
-    required this.debt,
+    required this.balanceLabel,
+    required this.maxAmount,
+    required this.amountLabel,
+    required this.fullAmountLabel,
+    required this.hint,
+    required this.submitLabel,
+    required this.emphasizePayment,
     required this.onSubmit,
   });
 
+  final String title;
   final String customerName;
-  final Money debt;
+  final String balanceLabel;
+  final Money maxAmount;
+  final String amountLabel;
+  final String fullAmountLabel;
+  final String hint;
+  final String submitLabel;
+  final bool emphasizePayment;
   final Future<void> Function(Money amount, String note) onSubmit;
 
   @override
-  State<_ReceivePaymentForm> createState() => _ReceivePaymentFormState();
+  State<_PaymentForm> createState() => _PaymentFormState();
 }
 
-class _ReceivePaymentFormState extends State<_ReceivePaymentForm> {
+class _PaymentFormState extends State<_PaymentForm> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _note = TextEditingController();
@@ -59,8 +134,9 @@ class _ReceivePaymentFormState extends State<_ReceivePaymentForm> {
     final amount = Money.tryParse(value);
     if (amount == null) return AppStrings.invalidAmount;
     if (!amount.isPositive) return AppStrings.amountMustBePositive;
-    if (amount > widget.debt) {
-      return 'المبلغ أكبر من الدين (${widget.debt.format()})';
+    if (amount > widget.maxAmount) {
+      return 'المبلغ أكبر من ${widget.balanceLabel} '
+          '(${widget.maxAmount.format()})';
     }
     return null;
   }
@@ -87,6 +163,8 @@ class _ReceivePaymentFormState extends State<_ReceivePaymentForm> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final accent = widget.emphasizePayment ? scheme.error : scheme.primary;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Form(
@@ -94,29 +172,29 @@ class _ReceivePaymentFormState extends State<_ReceivePaymentForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('تسديد دفعة', style: theme.textTheme.titleLarge),
+            Text(widget.title, style: theme.textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
               widget.customerName,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: scheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+                color: accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('الدين الحالي'),
+                  Text(widget.balanceLabel),
                   MoneyText(
-                    widget.debt,
+                    widget.maxAmount,
                     fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.error,
+                    color: accent,
                   ),
                 ],
               ),
@@ -130,13 +208,13 @@ class _ReceivePaymentFormState extends State<_ReceivePaymentForm> {
               ),
               textDirection: TextDirection.ltr,
               decoration: InputDecoration(
-                labelText: 'المبلغ المدفوع',
+                labelText: widget.amountLabel,
                 prefixText: r'$',
                 suffixIcon: TextButton(
                   onPressed: () => setState(
-                    () => _amount.text = widget.debt.toInputString(),
+                    () => _amount.text = widget.maxAmount.toInputString(),
                   ),
-                  child: const Text('كامل الدين'),
+                  child: Text(widget.fullAmountLabel),
                 ),
               ),
               validator: _validateAmount,
@@ -148,19 +226,19 @@ class _ReceivePaymentFormState extends State<_ReceivePaymentForm> {
             ),
             const SizedBox(height: 6),
             Text(
-              'تُوزَّع الدفعة على أقدم الفواتير غير المسددة أولاً.',
+              widget.hint,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: scheme.onSurfaceVariant,
               ),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+              Text(_error!, style: TextStyle(color: scheme.error)),
             ],
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _saving ? null : _save,
-              child: Text(_saving ? AppStrings.loading : 'تسجيل الدفعة'),
+              child: Text(_saving ? AppStrings.loading : widget.submitLabel),
             ),
           ],
         ),

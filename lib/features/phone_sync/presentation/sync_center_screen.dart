@@ -196,7 +196,7 @@ class _StatusCard extends StatelessWidget {
                 label: 'بيانات هذا الكمبيوتر الآن',
                 value:
                     '${summary.invoices} فاتورة، ${summary.customers} زبون، '
-                    '${summary.products} صنف',
+                    '${summary.products} صنف، ${summary.purchases} شراء',
               ),
             _Line(
               label: 'آخر نسخة أُرسلت تلقائياً',
@@ -242,7 +242,8 @@ class _StatusCard extends StatelessWidget {
 
   static String _event(SyncEvent? event) {
     if (event == null) return '—';
-    return '${_stamp(event.at)} (${event.invoices} فاتورة)';
+    return '${_stamp(event.at)} (${event.invoices} فاتورة، '
+        '${event.purchases} شراء)';
   }
 }
 

@@ -283,6 +283,13 @@ class _CountsTable extends StatelessWidget {
           plan.gained.invoices,
         ),
         row(
+          'عمليات الشراء',
+          plan.current.purchases,
+          plan.incoming.purchases,
+          plan.lost.purchases,
+          plan.gained.purchases,
+        ),
+        row(
           'الزبائن',
           plan.current.customers,
           plan.incoming.customers,
@@ -302,6 +309,13 @@ class _CountsTable extends StatelessWidget {
           plan.incomingReceipts,
           plan.lost.receipts,
           plan.gained.receipts,
+        ),
+        row(
+          'الدفعات للزبائن',
+          plan.currentPayouts,
+          plan.incomingPayouts,
+          plan.lost.payouts,
+          plan.gained.payouts,
         ),
       ],
     );

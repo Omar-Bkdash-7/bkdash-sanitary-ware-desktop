@@ -8,7 +8,8 @@ const DataSummary _summary = DataSummary(
   invoices: 0,
   customers: 0,
   products: 0,
-  schemaVersion: 1,
+  purchases: 0,
+  schemaVersion: 2,
 );
 
 DbKeySets _keys({
@@ -16,11 +17,15 @@ DbKeySets _keys({
   Map<String, String> customers = const <String, String>{},
   Map<String, String> items = const <String, String>{},
   Map<String, String> receipts = const <String, String>{},
+  Map<String, String> purchases = const <String, String>{},
+  Map<String, String> payouts = const <String, String>{},
 }) => DbKeySets(
   invoices: invoices,
   customers: customers,
   items: items,
   receipts: receipts,
+  purchases: purchases,
+  payouts: payouts,
 );
 
 ImportPlan _plan(DbKeySets local, DbKeySets incoming) =>
@@ -140,6 +145,59 @@ void main() {
       );
       expect(plan.verdict, ImportVerdict.incomingNewer);
       expect(plan.gained.receipts, 1);
+    });
+
+    test('a purchase made on the phone counts as news', () {
+      final plan = _plan(
+        _keys(items: _catalogue, customers: <String, String>{'1|c1': 'Ali'}),
+        _keys(
+          items: _catalogue,
+          customers: <String, String>{'1|c1': 'Ali'},
+          purchases: <String, String>{'1|t9': '1|Ali|2026-11-10|5000|2000|'},
+        ),
+      );
+      expect(plan.verdict, ImportVerdict.incomingNewer);
+      expect(plan.gained.purchases, 1);
+    });
+
+    test('a payout made on the phone counts as news', () {
+      final plan = _plan(
+        _keys(items: _catalogue, customers: <String, String>{'1|c1': 'Ali'}),
+        _keys(
+          items: _catalogue,
+          customers: <String, String>{'1|c1': 'Ali'},
+          payouts: <String, String>{'1|1|t9': '1000|'},
+        ),
+      );
+      expect(plan.verdict, ImportVerdict.incomingNewer);
+      expect(plan.gained.payouts, 1);
+    });
+
+    test('a purchase that exists only here would be lost', () {
+      final plan = _plan(
+        _keys(
+          items: _catalogue,
+          customers: <String, String>{'1|c1': 'Ali'},
+          purchases: <String, String>{'1|t9': '1|Ali|2026-11-10|5000|2000|'},
+        ),
+        _keys(items: _catalogue, customers: <String, String>{'1|c1': 'Ali'}),
+      );
+      expect(plan.verdict, ImportVerdict.incomingOlder);
+      expect(plan.lost.purchases, 1);
+      expect(plan.needsStrongWarning, isTrue);
+    });
+
+    test('a purchase alone makes the database non-fresh', () {
+      expect(
+        _keys(
+          purchases: <String, String>{'1|t9': '1|Ali|2026-11-10|5000|2000|'},
+        ).hasUserData,
+        isTrue,
+      );
+      expect(
+        _keys(payouts: <String, String>{'1|1|t9': '1000|'}).hasUserData,
+        isTrue,
+      );
     });
 
     test('an item that exists only here is a loss', () {

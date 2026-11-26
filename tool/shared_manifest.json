@@ -22,6 +22,7 @@
     "lib/features/desktop_sync/models/**",
     "lib/features/inventory/**",
     "lib/features/invoices/**",
+    "lib/features/purchases/**",
     "lib/features/reports/**",
     "lib/features/security/data/biometric_authenticator.dart",
     "lib/features/security/data/pin_hasher.dart",
@@ -49,8 +50,10 @@
   "copy_tests": [
     "test/core/**",
     "test/features/backup/**",
+    "test/features/customers/**",
     "test/features/desktop_sync/**",
     "test/features/invoices/**",
+    "test/features/purchases/**",
     "test/features/reports/**",
     "test/features/security/**",
     "test/features/telegram/**",

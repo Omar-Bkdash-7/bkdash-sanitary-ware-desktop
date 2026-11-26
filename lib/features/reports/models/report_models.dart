@@ -1,6 +1,7 @@
 import 'package:bkdash_sanitary_ware/core/formatting/app_dates.dart';
 import 'package:bkdash_sanitary_ware/core/formatting/money.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase.dart';
 
 /// The ready-made periods of the reports screen.
 enum ReportPeriod {
@@ -57,6 +58,10 @@ final class ReportSummary {
     required this.profit,
     required this.collected,
     required this.outstanding,
+    required this.purchaseCount,
+    required this.purchases,
+    required this.paidToCustomers,
+    required this.payables,
   });
 
   static const ReportSummary empty = ReportSummary(
@@ -65,6 +70,10 @@ final class ReportSummary {
     profit: Money.zero,
     collected: Money.zero,
     outstanding: Money.zero,
+    purchaseCount: 0,
+    purchases: Money.zero,
+    paidToCustomers: Money.zero,
+    payables: Money.zero,
   );
 
   final int invoiceCount;
@@ -80,6 +89,21 @@ final class ReportSummary {
 
   /// What is still unpaid on the invoices issued in the period.
   final Money outstanding;
+
+  /// Purchases made from customers in the period.
+  final int purchaseCount;
+
+  /// Total of those purchases (what the shop owes for the pieces).
+  final Money purchases;
+
+  /// Cash paid to customers in the period (including old purchases).
+  final Money paidToCustomers;
+
+  /// What is still unpaid on the purchases made in the period.
+  final Money payables;
+
+  /// Cash actually kept in the period: received minus paid to customers.
+  Money get netCash => collected - paidToCustomers;
 
   /// Profit as a percentage of sales (0 when there are no sales).
   double get margin => sales.isPositive ? profit.cents * 100 / sales.cents : 0;
@@ -168,6 +192,7 @@ final class ReportData {
     required this.categories,
     required this.topItems,
     required this.invoices,
+    required this.purchases,
   });
 
   final DateRange range;
@@ -179,4 +204,5 @@ final class ReportData {
   final List<CategorySales> categories;
   final List<TopItem> topItems;
   final List<Invoice> invoices;
+  final List<Purchase> purchases;
 }

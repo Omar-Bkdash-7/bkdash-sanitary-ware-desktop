@@ -7,6 +7,8 @@ import 'package:bkdash_sanitary_ware/features/customers/models/customer.dart';
 import 'package:bkdash_sanitary_ware/features/inventory/models/item.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice_line_export.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase_line_export.dart';
 
 /// Builds the `.xlsx` workbook of each export (no files, no database: easy to
 /// test).
@@ -109,6 +111,67 @@ abstract final class XlsxExports {
     return xlsx.build();
   }
 
+  static Uint8List purchases(List<Purchase> purchases) {
+    final xlsx = XlsxWriter(sheetName: 'الشراء من الزبائن')
+      ..writeRow(const <Object?>[
+        'رقم الشراء',
+        'التاريخ',
+        'الوقت',
+        'الزبون',
+        'الهاتف',
+        'الإجمالي',
+        'المدفوع',
+        'المتبقي',
+        'ملاحظات',
+      ]);
+    for (final purchase in purchases) {
+      xlsx.writeRow(<Object?>[
+        purchase.id,
+        AppDates.displayIso(purchase.purchaseDate),
+        AppDates.timeIso(purchase.createdAt),
+        purchase.customerName,
+        purchase.customerPhone,
+        _amount(purchase.total),
+        _amount(purchase.paid),
+        _amount(purchase.remaining),
+        purchase.notes,
+      ]);
+    }
+    return xlsx.build();
+  }
+
+  static Uint8List purchaseLines(List<PurchaseLineExport> lines) {
+    final xlsx = XlsxWriter(sheetName: 'الأصناف المشتراة')
+      ..writeRow(const <Object?>[
+        'رقم الشراء',
+        'التاريخ',
+        'الزبون',
+        'الصنف',
+        'اسم المادة',
+        'الرمز',
+        'الوحدة',
+        'الكمية',
+        'سعر الشراء',
+        'إجمالي السطر',
+      ]);
+    for (final entry in lines) {
+      final line = entry.line;
+      xlsx.writeRow(<Object?>[
+        entry.purchaseId,
+        AppDates.displayIso(entry.purchaseDate),
+        entry.customerName,
+        line.category,
+        line.itemName,
+        line.sku,
+        line.unit,
+        line.quantity,
+        _amount(line.unitCost),
+        _amount(line.lineTotal),
+      ]);
+    }
+    return xlsx.build();
+  }
+
   static Uint8List customers(List<CustomerSummary> customers) {
     final xlsx = XlsxWriter(sheetName: 'الزبائن')
       ..writeRow(const <Object?>[
@@ -116,9 +179,12 @@ abstract final class XlsxExports {
         'الهاتف',
         'العنوان',
         'عدد الفواتير',
-        'إجمالي المشتريات',
-        'المدفوع',
-        'الدين المتبقي',
+        'إجمالي المبيعات',
+        'المقبوض',
+        'عدد عمليات الشراء',
+        'إجمالي المشتريات من الزبون',
+        'المدفوع للزبون',
+        'صافي الرصيد',
       ]);
     for (final summary in customers) {
       xlsx.writeRow(<Object?>[
@@ -126,9 +192,12 @@ abstract final class XlsxExports {
         summary.customer.phone,
         summary.customer.address,
         summary.invoiceCount,
+        _amount(summary.totalSales),
+        _amount(summary.totalReceived),
+        summary.purchaseCount,
         _amount(summary.totalPurchases),
-        _amount(summary.totalPaid),
-        _amount(summary.debt),
+        _amount(summary.totalPaidToCustomer),
+        _amount(summary.netBalance),
       ]);
     }
     return xlsx.build();

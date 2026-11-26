@@ -8,6 +8,8 @@ import 'package:bkdash_sanitary_ware/features/inventory/models/item.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice_line_export.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/payment_method.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase_line_export.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ArchiveFile _part(List<int> workbook, String name) {
@@ -111,7 +113,65 @@ void main() {
     expect(sheet, contains('<v>15.0</v>'));
   });
 
-  test('customers workbook lists the debt of each customer', () {
+  test('purchase workbook lists each purchase with its remaining amount', () {
+    const purchase = Purchase(
+      id: 4,
+      customerId: 1,
+      customerName: 'سامر',
+      customerPhone: '0999',
+      purchaseDate: '2026-11-02',
+      createdAt: '2026-11-02T15:30:05',
+      total: Money(9000),
+      paid: Money(3000),
+      notes: '',
+    );
+
+    final sheet = _text(
+      _part(
+        XlsxExports.purchases(const [purchase]),
+        'xl/worksheets/sheet1.xml',
+      ),
+    );
+
+    expect(sheet, contains('رقم الشراء'));
+    expect(sheet, contains('2026/11/02'));
+    expect(sheet, contains('سامر'));
+    expect(sheet, contains('>0999<'));
+    expect(sheet, contains('<v>90.0</v>'));
+    expect(sheet, contains('<v>30.0</v>'));
+    expect(sheet, contains('<v>60.0</v>'));
+  });
+
+  test('purchase lines workbook lists each bought line', () {
+    const export = PurchaseLineExport(
+      purchaseId: 4,
+      purchaseDate: '2026-11-02',
+      customerName: 'سامر',
+      line: PurchaseLineRecord(
+        itemName: 'خلاط',
+        category: 'خلاطات',
+        sku: 'MIX-01',
+        unit: 'قطعة',
+        quantity: 2,
+        unitCost: Money(3000),
+      ),
+    );
+
+    final sheet = _text(
+      _part(
+        XlsxExports.purchaseLines(const [export]),
+        'xl/worksheets/sheet1.xml',
+      ),
+    );
+
+    expect(sheet, contains('خلاط'));
+    expect(sheet, contains('MIX-01'));
+    expect(sheet, contains('<v>2</v>'));
+    expect(sheet, contains('<v>30.0</v>'));
+    expect(sheet, contains('<v>60.0</v>'));
+  });
+
+  test('customers workbook lists both sides of the balance', () {
     const summary = CustomerSummary(
       customer: Customer(
         id: 1,
@@ -121,8 +181,11 @@ void main() {
         notes: '',
       ),
       invoiceCount: 2,
-      totalPurchases: Money(30000),
-      totalPaid: Money(12000),
+      purchaseCount: 1,
+      totalSales: Money(30000),
+      totalReceived: Money(12000),
+      totalPurchases: Money(5000),
+      totalPaidToCustomer: Money(2000),
     );
 
     final sheet = _text(
@@ -134,9 +197,12 @@ void main() {
 
     expect(sheet, contains('سامر'));
     expect(sheet, contains('دمشق'));
+    expect(sheet, contains('إجمالي المبيعات'));
     expect(sheet, contains('<v>2</v>'));
     expect(sheet, contains('<v>300.0</v>'));
     expect(sheet, contains('<v>120.0</v>'));
-    expect(sheet, contains('<v>180.0</v>'));
+    expect(sheet, contains('<v>50.0</v>'));
+    expect(sheet, contains('<v>20.0</v>'));
+    expect(sheet, contains('<v>150.0</v>'));
   });
 }

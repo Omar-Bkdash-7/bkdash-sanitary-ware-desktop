@@ -33,14 +33,19 @@ final class RecordTally {
     this.customers = 0,
     this.items = 0,
     this.receipts = 0,
+    this.purchases = 0,
+    this.payouts = 0,
   });
 
   final int invoices;
   final int customers;
   final int items;
   final int receipts;
+  final int purchases;
+  final int payouts;
 
-  int get total => invoices + customers + items + receipts;
+  int get total =>
+      invoices + customers + items + receipts + purchases + payouts;
 
   bool get isEmpty => total == 0;
 }
@@ -54,6 +59,8 @@ final class ImportPlan {
     required this.incoming,
     required this.currentReceipts,
     required this.incomingReceipts,
+    required this.currentPayouts,
+    required this.incomingPayouts,
     required this.lost,
     required this.gained,
     required this.changed,
@@ -74,6 +81,8 @@ final class ImportPlan {
 
   final int currentReceipts;
   final int incomingReceipts;
+  final int currentPayouts;
+  final int incomingPayouts;
 
   /// Records here that the file lacks: importing deletes them.
   final RecordTally lost;
@@ -84,10 +93,11 @@ final class ImportPlan {
   /// Records on both sides whose content differs: the file's version wins.
   final RecordTally changed;
 
-  /// Newest invoice or receipt on this computer ("2026-11-16T09:41:12").
+  /// Newest invoice, receipt, purchase or payout on this computer
+  /// ("2026-11-16T09:41:12").
   final String localLastActivity;
 
-  /// Newest invoice or receipt in the file.
+  /// Newest invoice, receipt, purchase or payout in the file.
   final String incomingLastActivity;
 
   /// The caption line the file travelled with, when it came from Telegram.

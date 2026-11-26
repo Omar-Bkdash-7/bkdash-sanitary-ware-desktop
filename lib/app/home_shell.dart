@@ -48,6 +48,7 @@ class HomeShell extends StatelessWidget {
           create: (_) => CustomersController(
             customers: deps.customers,
             payments: deps.payments,
+            purchases: deps.purchases,
             changes: deps.changes,
           )..load(),
         ),

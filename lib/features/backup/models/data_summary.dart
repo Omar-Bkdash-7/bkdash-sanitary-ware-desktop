@@ -7,6 +7,7 @@ final class DataSummary {
     required this.invoices,
     required this.customers,
     required this.products,
+    this.purchases = 0,
     required this.schemaVersion,
   });
 
@@ -15,12 +16,16 @@ final class DataSummary {
     invoices: 0,
     customers: 0,
     products: 0,
+    purchases: 0,
     schemaVersion: 0,
   );
 
   final int invoices;
   final int customers;
   final int products;
+
+  /// Purchases made from customers (0 in a version 1 backup).
+  final int purchases;
 
   /// `PRAGMA user_version` of the file (0 for an empty summary).
   final int schemaVersion;

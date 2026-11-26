@@ -15,6 +15,8 @@ final class DbKeySets {
     this.customers = const <String, String>{},
     this.items = const <String, String>{},
     this.receipts = const <String, String>{},
+    this.purchases = const <String, String>{},
+    this.payouts = const <String, String>{},
     this.lastActivity = '',
   });
 
@@ -25,11 +27,23 @@ final class DbKeySets {
   /// Money collected from customers against their debts.
   final Map<String, String> receipts;
 
-  /// The newest invoice or receipt time ("2026-11-16T09:41:12"), or empty.
+  /// Pieces bought from customers.
+  final Map<String, String> purchases;
+
+  /// Money paid to customers for those purchases.
+  final Map<String, String> payouts;
+
+  /// The newest invoice, receipt, purchase or payout time
+  /// ("2026-11-16T09:41:12"), or empty.
   final String lastActivity;
 
-  /// `true` once somebody made a sale, registered a customer or took a payment.
-  /// The catalogue every fresh database starts with does not count.
+  /// `true` once somebody made a sale, registered a customer, took a payment,
+  /// bought from a customer or paid him. The catalogue every fresh database
+  /// starts with does not count.
   bool get hasUserData =>
-      invoices.isNotEmpty || customers.isNotEmpty || receipts.isNotEmpty;
+      invoices.isNotEmpty ||
+      customers.isNotEmpty ||
+      receipts.isNotEmpty ||
+      purchases.isNotEmpty ||
+      payouts.isNotEmpty;
 }

@@ -15,21 +15,44 @@ class CustomerRepository {
   final DataChangeNotifier _changes;
   final Clock _clock;
 
+  /// Sales and purchases are aggregated separately: joining both tables to
+  /// `customers` directly would multiply every invoice by every purchase.
   static const String _summarySelect = '''
+WITH sales AS (
+  SELECT customer_id,
+         COUNT(*) AS invoice_count,
+         IFNULL(SUM(total_cents), 0) AS sales_cents,
+         IFNULL(SUM(paid_cents), 0) AS sales_paid_cents
+  FROM invoices
+  WHERE customer_id IS NOT NULL
+  GROUP BY customer_id
+),
+buybacks AS (
+  SELECT customer_id,
+         COUNT(*) AS purchase_count,
+         IFNULL(SUM(total_cents), 0) AS purchases_cents,
+         IFNULL(SUM(paid_cents), 0) AS purchases_paid_cents
+  FROM purchases
+  GROUP BY customer_id
+)
 SELECT c.id, c.name, c.phone, c.address, c.notes,
-       COUNT(i.id) AS invoice_count,
-       IFNULL(SUM(i.total_cents), 0) AS total_cents,
-       IFNULL(SUM(i.paid_cents), 0) AS paid_cents
+       IFNULL(s.invoice_count, 0) AS invoice_count,
+       IFNULL(s.sales_cents, 0) AS sales_cents,
+       IFNULL(s.sales_paid_cents, 0) AS sales_paid_cents,
+       IFNULL(b.purchase_count, 0) AS purchase_count,
+       IFNULL(b.purchases_cents, 0) AS purchases_cents,
+       IFNULL(b.purchases_paid_cents, 0) AS purchases_paid_cents
 FROM customers c
-LEFT JOIN invoices i ON i.customer_id = c.id
+LEFT JOIN sales s ON s.customer_id = c.id
+LEFT JOIN buybacks b ON b.customer_id = c.id
 ''';
 
-  /// Every customer with his totals; the biggest debtors come first.
+  /// Every customer with his totals; the biggest net debtors come first.
   Future<List<CustomerSummary>> getAllWithSummary() async {
     final rows = await _database.db.rawQuery('''
 $_summarySelect
-GROUP BY c.id
-ORDER BY (IFNULL(SUM(i.total_cents), 0) - IFNULL(SUM(i.paid_cents), 0)) DESC,
+ORDER BY ((sales_cents - sales_paid_cents) -
+          (purchases_cents - purchases_paid_cents)) DESC,
          c.name COLLATE NOCASE
 ''');
     return rows.map(CustomerSummary.fromRow).toList();
@@ -37,7 +60,7 @@ ORDER BY (IFNULL(SUM(i.total_cents), 0) - IFNULL(SUM(i.paid_cents), 0)) DESC,
 
   Future<CustomerSummary?> getSummary(int id) async {
     final rows = await _database.db.rawQuery(
-      '$_summarySelect WHERE c.id = ? GROUP BY c.id',
+      '$_summarySelect WHERE c.id = ?',
       <Object?>[id],
     );
     return rows.isEmpty ? null : CustomerSummary.fromRow(rows.first);
@@ -74,10 +97,10 @@ ORDER BY (IFNULL(SUM(i.total_cents), 0) - IFNULL(SUM(i.paid_cents), 0)) DESC,
     _changes.reportWrite(DataWrite.customers);
   }
 
-  /// A customer who has invoices can not be deleted (it would erase the history
-  /// of his debts).
+  /// A customer who has invoices or purchases can not be deleted: either would
+  /// erase part of his account history and of the balance he is owed.
   ///
-  /// The check and the delete run in one transaction: an invoice saved from
+  /// The checks and the delete run in one transaction: a document saved from
   /// another screen can never slip in between them.
   Future<void> delete(int id) async {
     await _database.db.transaction((txn) async {
@@ -98,6 +121,18 @@ ORDER BY (IFNULL(SUM(i.total_cents), 0) - IFNULL(SUM(i.paid_cents), 0)) DESC,
       if (invoiceCount > 0) {
         throw const ConflictException(
           'لا يمكن حذف زبون لديه فواتير مسجّلة، لأن ذلك يُفقد سجلّ ديونه.',
+        );
+      }
+      final purchases = await txn.rawQuery(
+        'SELECT COUNT(*) AS count FROM ${DbTables.purchases} '
+        'WHERE customer_id = ?',
+        <Object?>[id],
+      );
+      final purchaseCount = (purchases.first['count'] as int?) ?? 0;
+      if (purchaseCount > 0) {
+        throw const ConflictException(
+          'لا يمكن حذف زبون لديه عمليات شراء مسجّلة، لأن ذلك يُفقد سجلّ '
+          'المبالغ المستحقة له.',
         );
       }
       await txn.delete(

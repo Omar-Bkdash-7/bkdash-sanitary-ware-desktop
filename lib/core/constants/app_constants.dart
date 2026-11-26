@@ -29,5 +29,5 @@ abstract final class AppConstants {
   static const Duration autoLockAfter = Duration(seconds: 30);
 
   static const String databaseFileName = 'bkdash_sanitary_ware.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 }

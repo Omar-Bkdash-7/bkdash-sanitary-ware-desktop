@@ -6,6 +6,7 @@ final class SyncEvent {
     required this.invoices,
     required this.customers,
     required this.products,
+    this.purchases = 0,
     this.note = '',
   });
 
@@ -17,6 +18,7 @@ final class SyncEvent {
     invoices: (json['invoices'] as num?)?.toInt() ?? 0,
     customers: (json['customers'] as num?)?.toInt() ?? 0,
     products: (json['products'] as num?)?.toInt() ?? 0,
+    purchases: (json['purchases'] as num?)?.toInt() ?? 0,
     note: (json['note'] as String?) ?? '',
   );
 
@@ -25,6 +27,7 @@ final class SyncEvent {
   final int invoices;
   final int customers;
   final int products;
+  final int purchases;
 
   /// For an import, the verdict that was shown before the user confirmed.
   final String note;
@@ -35,6 +38,7 @@ final class SyncEvent {
     'invoices': invoices,
     'customers': customers,
     'products': products,
+    'purchases': purchases,
     'note': note,
   };
 }

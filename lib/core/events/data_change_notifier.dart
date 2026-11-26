@@ -19,6 +19,15 @@ enum DataWrite {
 
   /// A payment was received.
   payment,
+
+  /// Pieces were bought from a customer.
+  purchase,
+
+  /// A purchase was deleted.
+  purchaseDeleted,
+
+  /// Money was paid to a customer for a purchase.
+  payout,
 }
 
 /// Called after a commit; [invoiceId] is set for the invoice writes.

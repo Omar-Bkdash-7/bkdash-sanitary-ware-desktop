@@ -104,12 +104,32 @@ void main() {
         profit: Money(5000),
         collected: Money(12000),
         outstanding: Money(8000),
+        purchaseCount: 1,
+        purchases: Money(4000),
+        paidToCustomers: Money(1000),
+        payables: Money(3000),
       );
       expect(summary.margin, 25);
     });
 
+    test('net cash is what was received minus what was paid to customers', () {
+      const summary = ReportSummary(
+        invoiceCount: 2,
+        sales: Money(20000),
+        profit: Money(5000),
+        collected: Money(12000),
+        outstanding: Money(8000),
+        purchaseCount: 1,
+        purchases: Money(4000),
+        paidToCustomers: Money(15000),
+        payables: Money(3000),
+      );
+      expect(summary.netCash, const Money(-3000));
+    });
+
     test('is zero when nothing was sold', () {
       expect(ReportSummary.empty.margin, 0);
+      expect(ReportSummary.empty.netCash, Money.zero);
     });
   });
 }

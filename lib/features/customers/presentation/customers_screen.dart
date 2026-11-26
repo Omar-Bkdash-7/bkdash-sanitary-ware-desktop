@@ -1,4 +1,5 @@
 import 'package:bkdash_sanitary_ware/app/theme/app_theme.dart';
+import 'package:bkdash_sanitary_ware/core/formatting/money.dart';
 import 'package:bkdash_sanitary_ware/core/widgets/app_feedback.dart';
 import 'package:bkdash_sanitary_ware/core/widgets/empty_state.dart';
 import 'package:bkdash_sanitary_ware/core/widgets/form_fields.dart';
@@ -9,10 +10,11 @@ import 'package:bkdash_sanitary_ware/features/customers/presentation/customer_de
 import 'package:bkdash_sanitary_ware/features/customers/presentation/customer_form_sheet.dart';
 import 'package:bkdash_sanitary_ware/features/customers/presentation/customers_controller.dart';
 import 'package:bkdash_sanitary_ware/features/customers/presentation/receive_payment_sheet.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/presentation/create_purchase_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// The customers and what each one owes.
+/// The customers, what each one owes and what the shop owes him.
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
 
@@ -53,7 +55,7 @@ class _CustomersBody extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: _DebtBanner(controller: controller),
+          child: _BalanceBanner(controller: controller),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -67,9 +69,9 @@ class _CustomersBody extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               FilterChip(
-                label: const Text('عليهم ذمة'),
-                selected: controller.onlyDebtors,
-                onSelected: (value) => controller.setOnlyDebtors(value: value),
+                label: const Text('أرصدة مفتوحة'),
+                selected: controller.onlyOpen,
+                onSelected: (value) => controller.setOnlyOpen(value: value),
               ),
             ],
           ),
@@ -80,6 +82,8 @@ class _CustomersBody extends StatelessWidget {
                   icon: Icons.people_outline_rounded,
                   title: controller.all.isEmpty
                       ? 'لا يوجد زبائن بعد'
+                      : controller.onlyOpen
+                      ? 'كل الحسابات خالصة'
                       : 'لا توجد نتائج مطابقة',
                   message: controller.all.isEmpty
                       ? 'أضف زبوناً، أو سيُضاف تلقائياً عند أول فاتورة آجلة.'
@@ -98,6 +102,7 @@ class _CustomersBody extends StatelessWidget {
                         ),
                       ),
                     ),
+                    onPurchase: () => _purchase(context, customers[index]),
                     onPay: () => _pay(context, customers[index]),
                   ),
                 ),
@@ -106,73 +111,157 @@ class _CustomersBody extends StatelessWidget {
     );
   }
 
-  Future<void> _pay(BuildContext context, CustomerSummary summary) async {
-    final paid = await showReceivePaymentSheet(
-      context,
-      customerName: summary.customer.name,
-      debt: summary.debt,
-      onSubmit: (amount, note) => controller.receivePayment(
-        customerId: summary.customer.id,
-        amount: amount,
-        note: note,
+  Future<void> _purchase(BuildContext context, CustomerSummary summary) async {
+    final id = await Navigator.of(context).push<int>(
+      MaterialPageRoute<int>(
+        builder: (_) => CreatePurchaseScreen(customer: summary.customer),
       ),
     );
-    if (paid == true && context.mounted) {
-      showAppSnackBar(context, 'تم تسجيل الدفعة');
+    if (id != null && context.mounted) {
+      showAppSnackBar(context, 'تم حفظ عملية الشراء #$id');
+    }
+  }
+
+  Future<void> _pay(BuildContext context, CustomerSummary summary) async {
+    final paidOut = summary.weOwe
+        ? await showPayCustomerSheet(
+            context,
+            customerName: summary.customer.name,
+            payable: summary.amountPayable,
+            onSubmit: (amount, note) => controller.payCustomer(
+              customerId: summary.customer.id,
+              amount: amount,
+              note: note,
+            ),
+          )
+        : await showReceivePaymentSheet(
+            context,
+            customerName: summary.customer.name,
+            debt: summary.amountDue,
+            onSubmit: (amount, note) => controller.receivePayment(
+              customerId: summary.customer.id,
+              amount: amount,
+              note: note,
+            ),
+          );
+    if (paidOut == true && context.mounted) {
+      showAppSnackBar(
+        context,
+        summary.weOwe ? 'تم تسجيل الدفع للزبون' : 'تم تسجيل الدفعة',
+      );
     }
   }
 }
 
-class _DebtBanner extends StatelessWidget {
-  const _DebtBanner({required this.controller});
+class _BalanceBanner extends StatelessWidget {
+  const _BalanceBanner({required this.controller});
 
   final CustomersController controller;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final hasDebt = controller.totalDebt.isPositive;
-    final color = hasDebt ? scheme.error : scheme.success;
+    final net = controller.netBalance;
+    final color = net.isPositive
+        ? scheme.error
+        : net.isNegative
+        ? scheme.primary
+        : scheme.success;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Icon(
-            hasDebt
-                ? Icons.account_balance_wallet_outlined
-                : Icons.verified_outlined,
-            color: color,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('إجمالي الذمم على الزبائن'),
-                Text(
-                  hasDebt
-                      ? '${controller.debtorCount} زبون عليهم ذمة'
-                      : 'لا توجد ذمم مستحقة',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+          Row(
+            children: [
+              Icon(
+                net.isZero
+                    ? Icons.verified_outlined
+                    : Icons.account_balance_wallet_outlined,
+                color: color,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('أرصدة الزبائن'),
+                    Text(
+                      net.isZero
+                          ? 'كل الحسابات خالصة'
+                          : '${controller.debtorCount} مدين  •  '
+                                '${controller.creditorCount} دائن',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          MoneyText(
-            controller.totalDebt,
-            color: color,
-            fontWeight: FontWeight.bold,
-            style: Theme.of(context).textTheme.titleLarge,
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _SideAmount(
+                  label: 'لنا عند الزبائن',
+                  amount: controller.totalReceivable,
+                  color: scheme.error,
+                ),
+              ),
+              Container(width: 1, height: 32, color: scheme.outlineVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SideAmount(
+                  label: 'علينا للزبائن',
+                  amount: controller.totalPayable,
+                  color: scheme.primary,
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SideAmount extends StatelessWidget {
+  const _SideAmount({
+    required this.label,
+    required this.amount,
+    required this.color,
+  });
+
+  final String label;
+  final Money amount;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 2),
+        MoneyText(
+          amount,
+          color: amount.isPositive ? color : theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.bold,
+          style: theme.textTheme.titleMedium,
+        ),
+      ],
     );
   }
 }
@@ -181,11 +270,13 @@ class _CustomerCard extends StatelessWidget {
   const _CustomerCard({
     required this.summary,
     required this.onOpen,
+    required this.onPurchase,
     required this.onPay,
   });
 
   final CustomerSummary summary;
   final VoidCallback onOpen;
+  final VoidCallback onPurchase;
   final VoidCallback onPay;
 
   @override
@@ -199,72 +290,80 @@ class _CustomerCard extends StatelessWidget {
         onTap: onOpen,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
+          child: Column(
             children: [
-              CircleAvatar(
-                backgroundColor: scheme.primaryContainer,
-                foregroundColor: scheme.onPrimaryContainer,
-                child: Text(customer.name.characters.first),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      customer.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (customer.phone.isNotEmpty)
-                      Text(
-                        customer.phone,
-                        textDirection: TextDirection.ltr,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${summary.invoiceCount} فاتورة  •  مشتريات '
-                      '${summary.totalPurchases.format()}',
-                      textDirection: TextDirection.rtl,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Row(
                 children: [
-                  if (summary.hasDebt) ...[
-                    MoneyText(
-                      summary.debt,
-                      color: scheme.error,
-                      fontWeight: FontWeight.bold,
-                      style: theme.textTheme.titleSmall,
+                  CircleAvatar(
+                    backgroundColor: scheme.primaryContainer,
+                    foregroundColor: scheme.onPrimaryContainer,
+                    child: Text(customer.name.characters.first),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          customer.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (customer.phone.isNotEmpty)
+                          Text(
+                            customer.phone,
+                            textDirection: TextDirection.ltr,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${summary.invoiceCount} فاتورة  •  '
+                          '${summary.purchaseCount} شراء',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    OutlinedButton(
+                  ),
+                  const SizedBox(width: 8),
+                  _NetBalance(summary: summary),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: onPurchase,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 34),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+                    label: const Text('شراء'),
+                  ),
+                  const Spacer(),
+                  if (summary.hasBalance)
+                    OutlinedButton.icon(
                       onPressed: onPay,
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(64, 34),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        minimumSize: const Size(0, 34),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        visualDensity: VisualDensity.compact,
                       ),
-                      child: const Text('تسديد'),
-                    ),
-                  ] else
-                    Text(
-                      'خالص',
-                      style: TextStyle(
-                        color: scheme.success,
-                        fontWeight: FontWeight.bold,
+                      icon: Icon(
+                        summary.weOwe
+                            ? Icons.call_made_rounded
+                            : Icons.call_received_rounded,
+                        size: 16,
                       ),
+                      label: Text(summary.weOwe ? 'الدفع' : 'تسديد'),
                     ),
                 ],
               ),
@@ -272,6 +371,42 @@ class _CustomerCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NetBalance extends StatelessWidget {
+  const _NetBalance({required this.summary});
+
+  final CustomerSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    if (summary.isSettled) {
+      return Text(
+        'خالص',
+        style: TextStyle(color: scheme.success, fontWeight: FontWeight.bold),
+      );
+    }
+    final owes = summary.customerOwes;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          owes ? 'عليه' : 'له عندنا',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        MoneyText(
+          owes ? summary.amountDue : summary.amountPayable,
+          color: owes ? scheme.error : scheme.primary,
+          fontWeight: FontWeight.bold,
+          style: theme.textTheme.titleSmall,
+        ),
+      ],
     );
   }
 }

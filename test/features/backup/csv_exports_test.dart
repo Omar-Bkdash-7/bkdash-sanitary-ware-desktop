@@ -5,6 +5,8 @@ import 'package:bkdash_sanitary_ware/features/inventory/models/item.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice_line_export.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/payment_method.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase.dart';
+import 'package:bkdash_sanitary_ware/features/purchases/models/purchase_line_export.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 List<String> _lines(String csv) => csv
@@ -85,7 +87,7 @@ void main() {
     );
   });
 
-  test('customers export lists the debt of each customer', () {
+  test('customers export lists both sides of the balance', () {
     const summary = CustomerSummary(
       customer: Customer(
         id: 1,
@@ -95,11 +97,54 @@ void main() {
         notes: '',
       ),
       invoiceCount: 2,
-      totalPurchases: Money(30000),
-      totalPaid: Money(12000),
+      purchaseCount: 1,
+      totalSales: Money(30000),
+      totalReceived: Money(12000),
+      totalPurchases: Money(5000),
+      totalPaidToCustomer: Money(2000),
     );
     final lines = _lines(CsvExports.customers(const [summary]));
 
-    expect(lines[1], 'سامر,,دمشق,2,300.00,120.00,180.00');
+    expect(lines[1], 'سامر,,دمشق,2,300.00,120.00,1,50.00,20.00,150.00');
+  });
+
+  test('purchase export writes totals, paid and remaining', () {
+    const purchase = Purchase(
+      id: 4,
+      customerId: 2,
+      customerName: 'سامر',
+      customerPhone: '0999',
+      purchaseDate: '2026-11-03',
+      createdAt: '2026-11-03T10:05:00',
+      total: Money(9000),
+      paid: Money(4000),
+      notes: 'قطع قديمة',
+    );
+    final lines = _lines(CsvExports.purchases(const [purchase]));
+
+    expect(lines, hasLength(2));
+    expect(
+      lines[1],
+      '4,2026/11/03,10:05 ص,سامر,0999,90.00,40.00,50.00,قطع قديمة',
+    );
+  });
+
+  test('purchase lines export has one row per bought line', () {
+    const export = PurchaseLineExport(
+      purchaseId: 4,
+      purchaseDate: '2026-11-03',
+      customerName: 'سامر',
+      line: PurchaseLineRecord(
+        itemName: 'خلاط',
+        category: 'خلاطات',
+        sku: 'MIX-01',
+        unit: 'قطعة',
+        quantity: 3,
+        unitCost: Money(1000),
+      ),
+    );
+    final lines = _lines(CsvExports.purchaseLines(const [export]));
+
+    expect(lines[1], '4,2026/11/03,سامر,خلاطات,خلاط,MIX-01,قطعة,3,10.00,30.00');
   });
 }

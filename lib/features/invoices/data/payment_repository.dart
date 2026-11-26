@@ -42,11 +42,20 @@ class PaymentRepository {
         );
       }
 
+      // The oldest debts first, each one net of the credit its returns gave
+      // back: the money collected may only cover what is really owed.
       final rows = await txn.rawQuery(
-        'SELECT id, total_cents - paid_cents AS remaining_cents '
-        'FROM ${DbTables.invoices} '
-        'WHERE customer_id = ? AND total_cents > paid_cents '
-        'ORDER BY invoice_date, id',
+        'SELECT i.id, '
+        'i.total_cents - i.paid_cents - IFNULL(r.credit_cents, 0) '
+        ' AS remaining_cents '
+        'FROM ${DbTables.invoices} i '
+        'LEFT JOIN (SELECT invoice_id, '
+        'SUM(total_cents - refund_cents) AS credit_cents '
+        'FROM ${DbTables.returns} GROUP BY invoice_id) r '
+        ' ON r.invoice_id = i.id '
+        'WHERE i.customer_id = ? '
+        ' AND i.total_cents - i.paid_cents - IFNULL(r.credit_cents, 0) > 0 '
+        'ORDER BY i.invoice_date, i.id',
         <Object?>[customerId],
       );
       final outstanding = rows

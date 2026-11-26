@@ -79,7 +79,13 @@ class InvoiceCard extends StatelessWidget {
                     amount: invoice.paid,
                     color: scheme.success,
                   ),
-                  if (invoice.isSettled)
+                  if (invoice.remaining.isNegative)
+                    _Figure(
+                      label: 'رصيد للزبون',
+                      amount: -invoice.remaining,
+                      color: scheme.success,
+                    )
+                  else if (invoice.isSettled)
                     Expanded(
                       child: Align(
                         alignment: AlignmentDirectional.centerStart,

@@ -15,6 +15,7 @@ final class Invoice {
     required this.paid,
     required this.profit,
     required this.notes,
+    this.returnedCredit = Money.zero,
   });
 
   factory Invoice.fromRow(Map<String, Object?> row) => Invoice(
@@ -29,6 +30,7 @@ final class Invoice {
     paid: Money(row['paid_cents']! as int),
     profit: Money(row['profit_cents']! as int),
     notes: (row['notes'] as String?) ?? '',
+    returnedCredit: Money((row['returns_cents'] as int?) ?? 0),
   );
 
   final int id;
@@ -47,7 +49,15 @@ final class Invoice {
   final Money profit;
   final String notes;
 
-  Money get remaining => total - paid;
+  /// The credit of the returns made on this invoice: their value at the prices
+  /// of the sale, minus the cash handed back with them. It is part of what the
+  /// invoice no longer asks for, so [remaining] leaves it out.
+  final Money returnedCredit;
+
+  /// What the customer still owes on this invoice after its returns.
+  /// Negative when the invoice was already paid and something came back: the
+  /// shop owes him that credit.
+  Money get remaining => total - paid - returnedCredit;
 
   bool get isSettled => !remaining.isPositive;
 }

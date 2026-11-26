@@ -373,22 +373,28 @@ class InvoiceRepository {
       conditions.add('invoice_date <= ?');
       args.add(toDate);
     }
-    final rows = await _database.db.query(
-      DbTables.invoices,
-      where: conditions.isEmpty ? null : conditions.join(' AND '),
-      whereArgs: args.isEmpty ? null : args,
-      orderBy: 'id DESC',
+    final rows = await _database.db.rawQuery(
+      'SELECT i.*, '
+      'IFNULL((SELECT SUM(r.total_cents - r.refund_cents) '
+      ' FROM ${DbTables.returns} r WHERE r.invoice_id = i.id), 0) '
+      ' AS returns_cents '
+      'FROM ${DbTables.invoices} i '
+      '${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'} '
+      'ORDER BY i.id DESC',
+      args,
     );
     return rows.map(Invoice.fromRow).toList();
   }
 
   Future<InvoiceDetails?> getDetails(int id) async {
     final db = _database.db;
-    final headers = await db.query(
-      DbTables.invoices,
-      where: 'id = ?',
-      whereArgs: <Object?>[id],
-      limit: 1,
+    final headers = await db.rawQuery(
+      'SELECT i.*, '
+      'IFNULL((SELECT SUM(r.total_cents - r.refund_cents) '
+      ' FROM ${DbTables.returns} r WHERE r.invoice_id = i.id), 0) '
+      ' AS returns_cents '
+      'FROM ${DbTables.invoices} i WHERE i.id = ? LIMIT 1',
+      <Object?>[id],
     );
     if (headers.isEmpty) return null;
     final lines = await db.query(

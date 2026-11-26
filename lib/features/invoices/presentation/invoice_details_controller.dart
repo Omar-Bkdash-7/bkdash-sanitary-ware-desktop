@@ -35,7 +35,8 @@ class InvoiceDetailsController extends BaseController {
   /// The returns of this invoice, newest first.
   List<ReturnRecord> get returns => _returnList;
 
-  /// Credit given back at the prices of the original sale.
+  /// Credit given back at the prices of the original sale (the saved invoice
+  /// already deducts it from its remaining amount; this is the breakdown).
   Money get returnedCredit =>
       Money.sum(_returnList.map((entry) => entry.total));
 
@@ -47,7 +48,8 @@ class InvoiceDetailsController extends BaseController {
   Money get remainingAfterReturns {
     final details = _details;
     if (details == null) return Money.zero;
-    return details.invoice.remaining - (returnedCredit - refunded);
+    final invoice = details.invoice;
+    return invoice.total - invoice.paid - (returnedCredit - refunded);
   }
 
   Future<void> load() => runLoad(() async {

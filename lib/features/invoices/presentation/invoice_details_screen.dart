@@ -303,9 +303,11 @@ class _InvoiceView extends StatelessWidget {
                   color: scheme.success,
                 ),
                 _AmountRow(
-                  label: 'المتبقي',
-                  amount: invoice.remaining,
-                  color: invoice.isSettled ? null : scheme.error,
+                  label: returns.isEmpty ? 'المتبقي' : 'المتبقي قبل المرتجعات',
+                  amount: invoice.total - invoice.paid,
+                  color: invoice.total - invoice.paid > Money.zero
+                      ? scheme.error
+                      : null,
                 ),
                 const Divider(),
                 _AmountRow(

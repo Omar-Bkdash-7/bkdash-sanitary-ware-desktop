@@ -1,4 +1,4 @@
-/// Converts Arabic-Indic (٠-٩) and Persian (۰-۹) digits to ASCII digits so
+/// Converts Arabic-Indic (U+0660-U+0669) and Persian (U+06F0-U+06F9) digits to ASCII digits so
 /// numbers typed on an Arabic keyboard can be parsed.
 String toAsciiDigits(String input) {
   final buffer = StringBuffer();

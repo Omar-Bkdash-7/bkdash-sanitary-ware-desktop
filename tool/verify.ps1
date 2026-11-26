@@ -1,5 +1,5 @@
-# التحقق الكامل من مشروع سطح المكتب (ويندوز).
-# الاستعمال من مجلد المشروع:   powershell -ExecutionPolicy Bypass -File tool\verify.ps1
+# Full verification of the desktop project (Windows).
+# Usage from the project folder:   powershell -ExecutionPolicy Bypass -File tool\verify.ps1:   powershell -ExecutionPolicy Bypass -File tool\verify.ps1
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 

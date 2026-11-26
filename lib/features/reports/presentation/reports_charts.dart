@@ -166,7 +166,7 @@ class CategoryPieChart extends StatelessWidget {
 
   final List<CategorySales> categories;
 
-  /// The biggest categories are listed; the rest are merged into "أخرى".
+  /// The biggest categories are listed; the rest are merged into an "Other" slice.
   static const int _maxSlices = 6;
 
   List<CategorySales> get _slices {

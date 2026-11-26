@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""فاحص ثابت لمشروع Flutter (بديل جزئي عن `flutter analyze` عند غيابه).
+"""Static checker for the Flutter project (a partial stand-in for `flutter analyze`).
 
-لا يغني عن `flutter analyze` و`flutter test`، لكنه يلتقط فئة الأخطاء الأكثر
-شيوعاً في الكود المكتوب دون مترجم:
+It does not replace `flutter analyze` and `flutter test`, but it catches the
+most common classes of mistakes in code written without a compiler:
 
-  1. توازن الأقواس ( ) [ ] { } وإغلاق النصوص (يفهم النصوص الثلاثية و r'' و ${}).
-  2. كل import من package:<هذا المشروع>/ يشير إلى ملف موجود؛ لا imports نسبية.
-  3. كل package: خارجي مذكور في pubspec.yaml (dependencies/dev_dependencies).
-  4. ترتيب الـ imports (dart: ثم package: أبجدياً) كما يفرضه directives_ordering.
-  5. import غير مستخدم (للمكتبات التي نعرف أسماءها) — تحذير من المحلل.
-  6. استدعاء منشئ/دالة static لصنف من المشروع: كل معامل مُسمّى يجب أن يكون
-     موجوداً في تعريفه، وكل معامل required يجب أن يُمرَّر.
-  7. كل `deps.<عضو>` تستعمله الشاشات موجود في AppDependencies.
-  8. كل asset مذكور في pubspec موجود.
+  1. Balanced ( ) [ ] { } and closed strings (understands triple-quoted
+     strings, r'' and ${}).
+  2. Every import from package:<this project>/ points to an existing file;
+     no relative imports.
+  3. Every external package: is declared in pubspec.yaml
+     (dependencies/dev_dependencies).
+  4. Import order (dart: then package:, alphabetical) as required by
+     directives_ordering.
+  5. Unused import (for libraries whose names we know) - an analyzer warning.
+  6. Constructor/static call of a project class: every named argument must
+     exist in its definition, and every required one must be passed.
+  7. Every `deps.<member>` used by the screens exists in AppDependencies.
+  8. Every asset listed in pubspec exists.
 
-الاستعمال:   python tool/check_project.py [--root DIR] [--only-mine]
+Usage:   python tool/check_project.py [--root DIR] [--only-mine]
 """
 
 from __future__ import annotations
@@ -44,7 +48,7 @@ class Problems:
 
 
 def skip_string(src: str, i: int, path: Path, problems: Problems) -> int:
-    """i يشير إلى بداية النص (r أو علامة الاقتباس). يرجع الفهرس بعد النص."""
+    """i points at the start of the string (r or the quote). Returns the index after it."""
     n = len(src)
     start = i
     raw = False
@@ -129,7 +133,7 @@ def scan_code(
 
 
 def matching_paren(src: str, open_index: int) -> int:
-    """فهرس ')' المقابل لـ '(' عند open_index (يتجاوز النصوص)."""
+    """Index of the ')' matching '(' at open_index (skips strings)."""
     depth, i, n = 0, open_index, len(src)
     sink = Problems()
     while i < n:
@@ -153,7 +157,7 @@ def matching_paren(src: str, open_index: int) -> int:
 
 
 def blank_comments(src: str) -> str:
-    """نسخة بنفس الأطوال تُستبدل فيها التعليقات بمسافات (النصوص تبقى كما هي)."""
+    """A copy of the same length with comments blanked to spaces (strings stay as they are)."""
     out = list(src)
     n, i = len(src), 0
     sink = Problems()
@@ -348,7 +352,8 @@ def declared_names(path: Path) -> set[str]:
     names.update(re.findall(r"^extension\s+(\w+)\s+on", text, re.M))
     names.update(re.findall(r"^(?:const|final|late final|late)\s+(?:[\w<>?,\s]+\s+)?(\w+)\s*=", text, re.M))
     names.update(re.findall(r"^[A-Za-z_][\w<>?,\[\]\s]*\s+(\w+)\s*(?:<[^>(]*>)?\s*\(", text, re.M))
-    # أعضاء المرافق/الامتدادات: كلمات داخل الامتدادات يصعب حصرها، فنضيف أسماء الدوال المعرّفة
+    # Extension members: words inside extensions are hard to list, so the declared
+    # method names are added too.
     names.update(re.findall(r"^\s+(?:static\s+)?[\w<>?,\[\]]+\s+(?:get\s+)?(\w+)\s*(?:\(|=>|\{)", text, re.M) if "extension" in text else [])
     names.discard("")
     _DECL_CACHE[path] = names
@@ -367,7 +372,7 @@ def uses_declarations_of(project: Project, target: Path, body: str) -> bool:
 
 
 def ctor_params(project: Project, cls: str, method: str | None) -> tuple[set[str], set[str]] | None:
-    """(كل الأسماء المُسمّاة، المطلوبة منها) لمنشئ غير مسمّى أو لدالة static."""
+    """(all named parameters, the required ones) for the unnamed constructor or a static method."""
     path = project.classes.get(cls)
     if not path:
         return None
@@ -427,16 +432,17 @@ def check_calls(project: Project, path: Path, src: str, problems: Problems) -> N
         cls, method = m.group(1), m.group(2)
         if cls not in project.classes:
             continue
-        # تجاهل التصريحات: "class Name(" لا توجد، لكن "Name._(" و"const Name(" هي تصريحات داخل الصنف نفسه
+        # Skip declarations: "class Name(" never appears, but "Name._(" and
+        # "const Name(" are declarations inside the class itself.
         before = src[max(0, m.start() - 12): m.start()]
         if re.search(r"(class|extends|implements|with)\s*$", before):
             continue
-        # لا نفحص إلا الاستدعاءات التي يكون فيها المعامل المُسمّى ظاهراً
+        # Only inspect calls that visibly use named arguments.
         open_index = m.end() - 1
         close = matching_paren(src, open_index)
         if close < 0:
             continue
-        # هل هذا تصريح منشئ داخل تعريف الصنف؟ (يتبعه { أو : أو => أو ;)
+        # Is this a constructor declaration inside the class body? (followed by { or : or => or ;)
         after = src[close + 1: close + 24].lstrip()
         decl_context = src[max(0, m.start() - 40): m.start()]
         in_own_class = project.classes.get(cls) == path and re.search(r"\n\s*(?:const\s+)?$", decl_context) and after[:1] in {":", "{", ";"} or after[:2] == "=>"

@@ -522,7 +522,7 @@ class _MethodCard extends StatelessWidget {
   }
 }
 
-/// The thin "أو" line between the two choices.
+/// The thin "or" separator between the two choices.
 class _OrDivider extends StatelessWidget {
   const _OrDivider({required this.theme});
 

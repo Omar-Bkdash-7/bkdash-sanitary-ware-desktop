@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ينسخ الكود المشترك من مشروع الموبايل إلى مشروع سطح المكتب.
+"""Copies the shared code from the mobile project into the desktop project.
 
-الفكرة: مشروع سطح المكتب يحمل نفس اسم الحزمة (bkdash_sanitary_ware) حتى تُنسخ
-ملفات الموبايل كما هي بلا أي تعديل في الـ imports. فلا ينحرف جدول ولا استعلام
-ولا خدمة بين الجهازين.
+The idea: the desktop project uses the same package name (bkdash_sanitary_ware)
+so the mobile files are copied unchanged with no import edits. That keeps every
+table, query and service identical on both machines.
 
-الاستعمال:
+Usage:
     python tool/sync_from_mobile.py --mobile ../bkdash_sanitary_ware
     python tool/sync_from_mobile.py --mobile ../bkdash_sanitary_ware --check
 
-* بدون --check: ينسخ ويطبّق رقعات النص المذكورة في shared_manifest.json.
-* مع --check: لا يكتب شيئاً؛ يُرجع الرمز 1 إذا كان في سطح المكتب ملف مشترك
-  قديم أو مُعدَّل يدوياً أو ناقص (يصلح لـ CI).
-* أي ملف جديد في lib/ بالموبايل لا تغطيه قواعد manifest يوقف النسخ (الرمز 2)،
-  لتقرر هل يُنسخ أم يُستبدل أم يُتجاهل.
+* Without --check: copies and applies the text patches listed in
+  shared_manifest.json.
+* With --check: writes nothing; exits with code 1 when a shared file on the
+  desktop side is stale, hand-edited or missing (suitable for CI).
+* Any new file in the mobile lib/ not covered by a manifest rule stops the copy
+  (code 2), so you can decide whether it is copied, overridden or skipped.
 
-الملفات تُوحَّد إلى نهايات أسطر LF قبل النسخ والمقارنة، فلا يظهر فرق وهمي
-بسبب CRLF في ويندوز.
+Files are normalised to LF line endings before copying and comparing, so no
+phantom diff appears because of CRLF on Windows.
 """
 
 from __future__ import annotations
@@ -42,7 +43,7 @@ TEXT_SUFFIXES = {".dart", ".yaml", ".yml", ".json", ".md", ".txt", ".ps1", ".py"
 
 
 def glob_to_regex(pattern: str) -> re.Pattern[str]:
-    """`**` = أي عمق، `*` = داخل المجلد الواحد."""
+    """`**` = any depth, `*` = within a single folder."""
     out = []
     i = 0
     while i < len(pattern):
@@ -119,7 +120,7 @@ def git_head(path: Path) -> str:
 
 
 def collect(mobile: Path, rules: Rules, warnings: list[str]):
-    """يرجع: (expected: {rel: bytes}, overrides: [rel], skipped: [rel], unclassified: [rel])."""
+    """Returns: (expected: {rel: bytes}, overrides: [rel], skipped: [rel], unclassified: [rel])."""
     expected: dict[str, bytes] = {}
     overrides: list[str] = []
     skipped: list[str] = []

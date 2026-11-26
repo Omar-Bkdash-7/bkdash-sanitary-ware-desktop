@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""يتحقق من منطق الاستيراد دون Flutter.
+"""Validates the import logic without Flutter.
 
-1. يستخرج DDL الحقيقي من lib/core/database/db_schema.dart.
-2. يستخرج استعلامات SELECT الفعلية من lib/features/phone_sync/data/db_keys_reader.dart
-   ويشغّلها في SQLite، فيلتقط أي خطأ في اسم عمود أو جدول.
-3. ينفّذ نسخة بايثون من ImportPlanner (نفس القواعد حرفياً) على سيناريوهات حقيقية
-   بين قاعدتين: التسليم بالتناوب، التعديل على الجهازين، استيراد نسخة قديمة...
+1. Extracts the real DDL from lib/core/database/db_schema.dart.
+2. Extracts the actual SELECT statements from
+   lib/features/phone_sync/data/db_keys_reader.dart and runs them in SQLite,
+   catching any wrong column or table name.
+3. Runs a Python copy of ImportPlanner (the same rules) on real two-database
+   scenarios: alternating hand-off, edits on both devices, importing an old
+   copy...
 
-الاستعمال:  python tool/validate_sync_logic.py
+Usage:  python tool/validate_sync_logic.py
 """
 
 from __future__ import annotations
@@ -91,7 +93,7 @@ def extract_queries(tables: dict[str, str]) -> list[str]:
 
 # ------------------------------------------------------------ the reader ----
 def read_keys(conn: sqlite3.Connection) -> dict:
-    """نسخة بايثون من DbKeysReader.read (الاستعلامات نفسها تُستخرج من Dart)."""
+    """Python copy of DbKeysReader.read (the queries themselves come from Dart)."""
     tables = load_tables()
     q = extract_queries(tables)
     assert len(q) == 10, f"متوقع 10 استعلامات في db_keys_reader.dart وُجد {len(q)}"
@@ -107,7 +109,7 @@ def read_keys(conn: sqlite3.Connection) -> dict:
     newest_receipt = conn.execute(q[7]).fetchone()[0] or ""
     newest_purchase = conn.execute(q[8]).fetchone()[0] or "" if has_purchases else ""
     newest_payout = conn.execute(q[9]).fetchone()[0] or "" if has_payouts else ""
-    # الأعمدة بالترتيب نفسه الذي في SELECT داخل Dart
+    # Columns in the same order as the SELECT inside Dart
     return {
         "invoices": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}|{r[5]}" for r in invoices},
         "customers": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}" for r in customers},
@@ -141,7 +143,7 @@ def has_user_data(keys: dict) -> bool:
 
 
 def plan(local: dict, incoming: dict) -> str:
-    """نسخة بايثون حرفية من ImportPlanner.compare."""
+    """A literal Python copy of ImportPlanner.compare."""
     names = ("invoices", "customers", "items", "receipts", "purchases", "payouts")
     lost = sum(missing(local[n], incoming[n]) for n in names)
     gained = sum(missing(incoming[n], local[n]) for n in names)
@@ -216,7 +218,7 @@ def add_purchase(conn, at, customer_id, total=5000, paid=2000, qty=3, item_id=1)
 
 
 def copy_db(src: sqlite3.Connection, dst_path: Path) -> sqlite3.Connection:
-    """ما يفعله VACUUM INTO ثم الاستعادة: الجهة الأخرى تصبح نسخة مطابقة."""
+    """What VACUUM INTO followed by a restore does: the other side becomes an identical copy."""
     if dst_path.exists():
         dst_path.unlink()
     src.execute(f"VACUUM INTO '{dst_path}'")
@@ -244,26 +246,26 @@ def run() -> None:
     add_item(phone, "SKU-2", "صنف ثانٍ")
     add_customer(phone, "زبون", "2026-02-01T09:00:00")
 
-    # 2.1 كمبيوتر جديد (كتالوج فقط) يستورد من الهاتف
+    # 2.1 A new computer (catalogue only) imports from the phone
     desktop = new_db(tmp / "desktop.db")
     add_item(desktop, "SKU-1")
     add_item(desktop, "SKU-2", "صنف ثانٍ")
     check("كمبيوتر بكتالوج فقط ← الهاتف = freshLocal",
           plan(read_keys(desktop), read_keys(phone)) == "freshLocal")
 
-    # 2.2 التسليم بالتناوب
+    # 2.2 Alternating hand-off
     add_invoice(phone, "2026-11-10T10:00:00")
     add_invoice(phone, "2026-11-10T11:00:00")
     desktop = copy_db(phone, tmp / "desktop.db")
     check("بعد الاستيراد: متطابقان", plan(read_keys(desktop), read_keys(phone)) == "identical")
 
-    add_invoice(desktop, "2026-11-11T09:00:00")  # فاتورة على الكمبيوتر
-    phone = copy_db(desktop, tmp / "phone.db")    # الهاتف يستورد نسخة الكمبيوتر
-    add_invoice(phone, "2026-11-11T18:00:00")     # فاتورة على الهاتف
+    add_invoice(desktop, "2026-11-11T09:00:00")  # An invoice on the computer
+    phone = copy_db(desktop, tmp / "phone.db")    # The phone imports the computer copy
+    add_invoice(phone, "2026-11-11T18:00:00")     # An invoice on the phone
     check("الهاتف أحدث (تسليم سليم) = incomingNewer",
           plan(read_keys(desktop), read_keys(phone)) == "incomingNewer")
 
-    # 2.3 استيراد نسخة قديمة فوق بيانات أحدث
+    # 2.3 Importing an old copy over newer data
     old_phone = copy_db(phone, tmp / "old_phone.db")
     add_invoice(desktop, "2026-11-12T09:00:00")
     desktop = copy_db(phone, tmp / "desktop.db")
@@ -272,7 +274,7 @@ def run() -> None:
     check("ملف أقدم من بياناتنا = incomingOlder",
           plan(read_keys(desktop), read_keys(old_phone)) == "incomingOlder")
 
-    # 2.4 الجهازان عُدّلا دون مزامنة (نفس الرقم، فاتورتان مختلفتان)
+    # 2.4 Both devices edited without syncing (same number, two different invoices)
     base = copy_db(phone, tmp / "base.db")
     desktop = copy_db(base, tmp / "desktop2.db")
     phone2 = copy_db(base, tmp / "phone2.db")
@@ -281,7 +283,7 @@ def run() -> None:
     check("الفاتورتان تحملان الرقم نفسه", a == b, f"{a} vs {b}")
     check("تعارض حقيقي = diverged", plan(read_keys(desktop), read_keys(phone2)) == "diverged")
 
-    # 2.5 فاتورة عُدّلت على جهة واحدة فقط
+    # 2.5 An invoice edited on one side only
     edited = copy_db(base, tmp / "edited.db")
     edited.execute("UPDATE invoices SET total_cents = 9999, paid_cents = 9999 WHERE id = 1")
     edited.commit()
@@ -289,14 +291,14 @@ def run() -> None:
     check("نفس السجلات وفاتورة معدّلة = edited",
           plan(read_keys(same), read_keys(edited)) == "edited")
 
-    # 2.6 فاتورة محذوفة على الهاتف وما زالت هنا
+    # 2.6 An invoice deleted on the phone but still here
     deleted = copy_db(base, tmp / "deleted.db")
     deleted.execute("DELETE FROM invoices WHERE id = 1")
     deleted.commit()
     check("حذف على الطرف الآخر يُعامل بحذر = incomingOlder",
           plan(read_keys(same), read_keys(deleted)) == "incomingOlder")
 
-    # 2.7 سند قبض على الهاتف
+    # 2.7 A receipt on the phone
     receipt = copy_db(base, tmp / "receipt.db")
     cid = receipt.execute("SELECT id FROM customers LIMIT 1").fetchone()[0]
     receipt.execute(
@@ -306,14 +308,14 @@ def run() -> None:
     check("سند قبض جديد في الملف = incomingNewer",
           plan(read_keys(same), read_keys(receipt)) == "incomingNewer")
 
-    # 2.8 شراء من زبون على الهاتف
+    # 2.8 A customer purchase on the phone
     purchase = copy_db(base, tmp / "purchase.db")
     cid = purchase.execute("SELECT id FROM customers LIMIT 1").fetchone()[0]
     add_purchase(purchase, "2026-11-15T10:00:00", cid)
     check("عملية شراء جديدة في الملف = incomingNewer",
           plan(read_keys(same), read_keys(purchase)) == "incomingNewer")
 
-    # 2.9 دفعة للزبون بعد الشراء
+    # 2.9 A payout to the customer after the purchase
     payout = copy_db(purchase, tmp / "payout.db")
     payout.execute(
         "INSERT INTO customer_payouts (customer_id,amount_cents,note,paid_at,paid_date)"
@@ -326,13 +328,13 @@ def run() -> None:
     check("دفعة للزبون في الملف = incomingNewer",
           plan(read_keys(purchase), read_keys(payout)) == "incomingNewer")
 
-    # 2.10 شراء سُجِّل هنا فقط: استيراد ملف قديم يحذفه
+    # 2.10 A purchase recorded here only: importing an old file drops it
     desktop_purchase = copy_db(base, tmp / "desktop_purchase.db")
     add_purchase(desktop_purchase, "2026-11-17T10:00:00", cid)
     check("شراء هنا فقط = incomingOlder",
           plan(read_keys(desktop_purchase), read_keys(same)) == "incomingOlder")
 
-    # 2.11 نسخة version 1 قديمة بلا جداول شراء تُقرأ وتُقارن بلا خطأ
+    # 2.11 An old version 1 copy without purchase tables is read and compared safely
     legacy = copy_db(base, tmp / "legacy.db")
     legacy.execute("PRAGMA foreign_keys = OFF")
     for table in ("purchase_payments", "purchase_items", "customer_payouts", "purchases"):
@@ -342,7 +344,7 @@ def run() -> None:
     check("نسخة v1 بلا جداول شراء تُقارن بأمان",
           plan(read_keys(same), read_keys(legacy)) == "identical")
 
-    # 2.12 النسخة المعزولة (VACUUM INTO) سليمة وبنفس المخطط
+    # 2.12 The isolated copy (VACUUM INTO) is intact and has the same schema
     row = sqlite3.connect(tmp / "base.db").execute("PRAGMA integrity_check").fetchone()[0]
     check("integrity_check للنسخة = ok", row == "ok", row)
     tables_in_copy = {r[0] for r in sqlite3.connect(tmp / "base.db").execute(

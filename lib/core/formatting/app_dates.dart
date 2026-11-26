@@ -62,7 +62,7 @@ abstract final class AppDates {
     return parsed == null ? iso : display(parsed);
   }
 
-  /// "03:30 م"
+  /// 12-hour clock with the Arabic AM/PM marker.
   static String time12(DateTime date) {
     final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
     return '${_two(hour)}:${_two(date.minute)} ${date.hour < 12 ? 'ص' : 'م'}';
@@ -74,14 +74,14 @@ abstract final class AppDates {
     return parsed == null ? '' : time12(parsed);
   }
 
-  /// "الاثنين"
+  /// The Arabic weekday name.
   static String weekday(DateTime date) => _weekdays[date.weekday - 1];
 
-  /// "تشرين الثاني 2026"
+  /// The Arabic month name followed by the year.
   static String monthYear(DateTime date) =>
       '${months[date.month - 1]} ${date.year}';
 
-  /// "2026/11/02 - الاثنين"
+  /// The display date followed by the Arabic weekday name.
   static String displayWithWeekday(DateTime date) =>
       '${display(date)} - ${weekday(date)}';
 

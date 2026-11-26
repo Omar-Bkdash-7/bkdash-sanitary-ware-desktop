@@ -1,5 +1,5 @@
 {
-  "_comment": "يحدّد أي ملف من مشروع الموبايل يُنسخ حرفياً إلى مشروع سطح المكتب، وأيّها يُستبدل بنسخة مكتوبة لسطح المكتب، وأيّها يُتجاهل. أي ملف جديد في الموبايل لا يطابق أي قاعدة هنا يوقف النسخ حتى تقرر مصيره.",
+  "_comment": "Decides which mobile project file is copied verbatim into the desktop project, which is replaced by a desktop-specific version, and which is skipped. Any new mobile file that matches no rule here stops the sync until you decide its fate.",
   "mobile_package": "bkdash_sanitary_ware",
   "copy": [
     "lib/app/app.dart",

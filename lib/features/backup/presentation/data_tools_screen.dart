@@ -328,7 +328,7 @@ class _DataToolsView extends StatelessWidget {
   }
 }
 
-/// "الفواتير: الحالي 12 ← النسخة 9".
+/// Example: the current count vs. the snapshot count (12 vs. 9).
 class _CountRow extends StatelessWidget {
   const _CountRow({
     required this.label,

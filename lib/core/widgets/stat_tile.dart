@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// A small labelled value used in dashboards ("المبيعات  $1,250.00").
+/// A small labelled value used in dashboards ("Sales  $1,250.00").
 class StatTile extends StatelessWidget {
   const StatTile({
     super.key,

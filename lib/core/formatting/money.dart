@@ -31,7 +31,7 @@ final class Money implements Comparable<Money> {
   static Money sum(Iterable<Money> amounts) =>
       amounts.fold(zero, (total, amount) => total + amount);
 
-  /// Parses text typed by a user ("12", "12.5", "12,50", "1,234.56", "١٢٫٥").
+  /// Parses text typed by a user ("12", "12.5", "12,50", "1,234.56", or Arabic-Indic digits).
   ///
   /// Returns `null` for empty, negative, malformed text or more than two
   /// decimal places.

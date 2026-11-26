@@ -15,6 +15,7 @@ final class PurchaseLine {
     required this.itemName,
     required this.category,
     required this.sku,
+    this.container = 0,
     required this.unit,
     required this.quantity,
     required this.unitCost,
@@ -30,6 +31,7 @@ final class PurchaseLine {
     itemName: item.name,
     category: item.category,
     sku: item.sku,
+    container: item.container,
     unit: item.unit,
     quantity: quantity,
     unitCost: unitCost ?? item.cost,
@@ -40,6 +42,7 @@ final class PurchaseLine {
     required String itemName,
     required String category,
     required String sku,
+    int container = 0,
     required String unit,
     required int quantity,
     required Money unitCost,
@@ -49,6 +52,7 @@ final class PurchaseLine {
     itemName: itemName.trim(),
     category: category.trim(),
     sku: sku.trim(),
+    container: container,
     unit: unit.trim(),
     quantity: quantity,
     unitCost: unitCost,
@@ -60,6 +64,10 @@ final class PurchaseLine {
   final String itemName;
   final String category;
   final String sku;
+
+  /// The container the pieces came from (`0` when not from one).
+  final int container;
+
   final String unit;
   final int quantity;
 
@@ -80,12 +88,14 @@ final class PurchaseLine {
     String? itemName,
     String? category,
     String? sku,
+    int? container,
     String? unit,
   }) => PurchaseLine(
     itemId: itemId,
     itemName: itemName ?? this.itemName,
     category: category ?? this.category,
     sku: sku ?? this.sku,
+    container: container ?? this.container,
     unit: unit ?? this.unit,
     quantity: quantity ?? this.quantity,
     unitCost: unitCost ?? this.unitCost,

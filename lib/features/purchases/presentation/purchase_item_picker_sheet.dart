@@ -105,6 +105,8 @@ class _PurchaseItemPickerState extends State<_PurchaseItemPicker> {
                         title: Text(item.name),
                         subtitle: Row(
                           children: [
+                            if (item.container > 0)
+                              Text('حاوية ${item.container}  •  '),
                             Text('التكلفة: '),
                             MoneyText(item.cost),
                             Text(

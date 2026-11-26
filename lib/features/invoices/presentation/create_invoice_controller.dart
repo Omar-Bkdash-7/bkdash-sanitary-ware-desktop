@@ -67,10 +67,15 @@ class CreateInvoiceController extends BaseController {
   Future<InvoiceDraft> _draftFromSaved(int id) async {
     final details = await _invoices.getDetails(id);
     if (details == null) throw const NotFoundException('الفاتورة غير موجودة.');
-    final bySku = <String, Item>{for (final item in _catalog) item.sku: item};
+    final byId = <int, Item>{for (final item in _catalog) item.id: item};
+    // The same SKU may exist in more than one container: match the pair.
+    final bySku = <String, Item>{
+      for (final item in _catalog) '${item.sku}|${item.container}': item,
+    };
     final lines = <InvoiceLine>[];
     for (final line in details.lines) {
-      final item = bySku[line.sku];
+      final item =
+          byId[line.itemId] ?? bySku['${line.sku}|${line.container}'];
       if (item == null) {
         throw const ValidationException(
           'أحد أصناف هذه الفاتورة لم يعد في المخزون، فلا يمكن تعديلها. '
@@ -83,6 +88,7 @@ class CreateInvoiceController extends BaseController {
           itemName: line.itemName,
           category: line.category,
           sku: line.sku,
+          container: line.container,
           unit: line.unit,
           quantity: line.quantity,
           unitCost: line.unitCost,

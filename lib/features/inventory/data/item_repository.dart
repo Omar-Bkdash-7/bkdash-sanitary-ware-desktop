@@ -20,7 +20,8 @@ class ItemRepository {
   Future<List<Item>> getAll() async {
     final rows = await _database.db.query(
       DbTables.items,
-      orderBy: 'category COLLATE NOCASE, name COLLATE NOCASE',
+      orderBy:
+          'category COLLATE NOCASE, name COLLATE NOCASE, container',
     );
     return rows.map(Item.fromRow).toList();
   }
@@ -51,7 +52,9 @@ class ItemRepository {
       _changes.reportWrite(DataWrite.inventory);
       return (await findById(id))!;
     } on DatabaseException catch (error) {
-      if (error.isUniqueConstraintError()) throw DuplicateSkuException(sku);
+      if (error.isUniqueConstraintError()) {
+        throw DuplicateSkuException(sku, container: input.container);
+      }
       rethrow;
     }
   }
@@ -70,7 +73,10 @@ class ItemRepository {
       if (changed == 0) throw const NotFoundException('الصنف غير موجود.');
     } on DatabaseException catch (error) {
       if (error.isUniqueConstraintError()) {
-        throw DuplicateSkuException(input.sku.trim());
+        throw DuplicateSkuException(
+          input.sku.trim(),
+          container: input.container,
+        );
       }
       rethrow;
     }
@@ -94,6 +100,7 @@ class ItemRepository {
   Map<String, Object?> _toRow(ItemInput input) => <String, Object?>{
     'category': input.category.trim(),
     'name': input.name.trim(),
+    'container': input.container,
     'unit': input.unit.trim().isEmpty ? AppStrings.piece : input.unit.trim(),
     'cost_cents': input.cost.cents,
     'price_cents': input.price.cents,

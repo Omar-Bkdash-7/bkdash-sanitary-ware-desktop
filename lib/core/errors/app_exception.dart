@@ -30,12 +30,19 @@ final class InsufficientStockException extends AppException {
   final int requested;
 }
 
-/// Another item already uses the same SKU / code.
+/// Another item already uses the same SKU / code in the same container.
 final class DuplicateSkuException extends AppException {
-  DuplicateSkuException(this.sku)
-    : super('الرمز "$sku" مستخدم لصنف آخر، اختر رمزاً مختلفاً.');
+  DuplicateSkuException(this.sku, {this.container = 0})
+    : super(
+        container > 0
+            ? 'الرمز "$sku" مستخدم لصنف آخر في الحاوية $container، '
+                  'اختر رمزاً مختلفاً أو حاوية أخرى.'
+            : 'الرمز "$sku" مستخدم لصنف آخر، اختر رمزاً مختلفاً '
+                  'أو رقم حاوية مختلفاً.',
+      );
 
   final String sku;
+  final int container;
 }
 
 /// The requested record does not exist (anymore).

@@ -41,6 +41,7 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
   late final TextEditingController _cost;
   late final TextEditingController _price;
   late final TextEditingController _quantity;
+  late final TextEditingController _container;
   late final TextEditingController _notes;
   String? _error;
   bool _saving = false;
@@ -60,6 +61,7 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
     _cost = TextEditingController(text: item?.cost.toInputString() ?? '');
     _price = TextEditingController(text: item?.price.toInputString() ?? '');
     _quantity = TextEditingController(text: '${item?.quantity ?? 0}');
+    _container = TextEditingController(text: '${item?.container ?? 0}');
     _notes = TextEditingController(text: item?.notes ?? '');
   }
 
@@ -73,6 +75,7 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
       _cost,
       _price,
       _quantity,
+      _container,
       _notes,
     ]) {
       controller.dispose();
@@ -92,6 +95,7 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
       cost: Money.tryParse(_cost.text)!,
       price: Money.tryParse(_price.text)!,
       quantity: tryParseInt(_quantity.text)!,
+      container: tryParseInt(_container.text) ?? 0,
       notes: _notes.text,
     );
     setState(() {
@@ -189,6 +193,12 @@ class _ItemFormSheetState extends State<ItemFormSheet> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            IntegerFormField(
+              controller: _container,
+              label: 'رقم الحاوية (0 = بلا حاوية)',
+              textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: 12),
             Row(

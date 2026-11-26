@@ -10,6 +10,7 @@ final class Item {
     required this.category,
     required this.name,
     required this.sku,
+    this.container = 0,
     required this.unit,
     required this.cost,
     required this.price,
@@ -23,6 +24,7 @@ final class Item {
       category: row['category']! as String,
       name: row['name']! as String,
       sku: row['sku']! as String,
+      container: (row['container'] as int?) ?? 0,
       unit: row['unit']! as String,
       cost: Money(row['cost_cents']! as int),
       price: Money(row['price_cents']! as int),
@@ -35,6 +37,10 @@ final class Item {
   final String category;
   final String name;
   final String sku;
+
+  /// The import container the pieces came in (`0` when not from one).
+  final int container;
+
   final String unit;
 
   /// What one piece costs the shop.
@@ -64,6 +70,7 @@ final class ItemInput {
     required this.category,
     required this.name,
     required this.sku,
+    this.container = 0,
     required this.unit,
     required this.cost,
     required this.price,
@@ -75,6 +82,7 @@ final class ItemInput {
     category: item.category,
     name: item.name,
     sku: item.sku,
+    container: item.container,
     unit: item.unit,
     cost: item.cost,
     price: item.price,
@@ -87,6 +95,10 @@ final class ItemInput {
 
   /// Empty means "generate a code for me".
   final String sku;
+
+  /// `0` when the pieces are not tied to an import container.
+  final int container;
+
   final String unit;
   final Money cost;
   final Money price;
@@ -98,7 +110,10 @@ final class ItemInput {
     if (name.trim().isEmpty || category.trim().isEmpty) {
       throw const ValidationException(AppStrings.requiredField);
     }
-    if (quantity < 0 || cost.isNegative || price.isNegative) {
+    if (quantity < 0 ||
+        container < 0 ||
+        cost.isNegative ||
+        price.isNegative) {
       throw const ValidationException(AppStrings.invalidNumber);
     }
   }

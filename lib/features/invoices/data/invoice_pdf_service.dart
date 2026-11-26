@@ -345,7 +345,11 @@ class InvoicePdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
                 cell('${offset + i + 1}', width: numberWidth, center: true),
-                cell(lines[i].itemName),
+                cell(
+                  lines[i].container > 0
+                      ? '${lines[i].itemName} (حاوية ${lines[i].container})'
+                      : lines[i].itemName,
+                ),
                 cell(
                   '${lines[i].quantity} ${lines[i].unit}',
                   width: quantityWidth,

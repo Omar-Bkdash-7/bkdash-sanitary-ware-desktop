@@ -252,6 +252,15 @@ class _ItemCard extends StatelessWidget {
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
+                    if (item.container > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'حاوية ${item.container}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 16,

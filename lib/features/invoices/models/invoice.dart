@@ -56,9 +56,11 @@ final class Invoice {
 /// deletion of the product do not alter old invoices).
 final class InvoiceLineRecord {
   const InvoiceLineRecord({
+    this.itemId,
     required this.itemName,
     required this.category,
     required this.sku,
+    this.container = 0,
     required this.unit,
     required this.quantity,
     required this.unitCost,
@@ -67,18 +69,27 @@ final class InvoiceLineRecord {
 
   factory InvoiceLineRecord.fromRow(Map<String, Object?> row) =>
       InvoiceLineRecord(
+        itemId: row['item_id'] as int?,
         itemName: row['item_name']! as String,
         category: row['category']! as String,
         sku: row['sku']! as String,
+        container: (row['container'] as int?) ?? 0,
         unit: row['unit']! as String,
         quantity: row['quantity']! as int,
         unitCost: Money(row['unit_cost_cents']! as int),
         unitPrice: Money(row['unit_price_cents']! as int),
       );
 
+  /// The inventory row the pieces came from (`null` when it was deleted).
+  final int? itemId;
+
   final String itemName;
   final String category;
   final String sku;
+
+  /// The container the pieces came from (`0` when not from one).
+  final int container;
+
   final String unit;
   final int quantity;
   final Money unitCost;

@@ -24,9 +24,21 @@ abstract final class DbKeysReader {
       'SELECT id, created_at, name, phone, address '
       'FROM ${DbTables.customers}',
     );
+    // A version 1 or 2 backup has no container column yet.
+    final itemTable = await db.query(
+      'sqlite_master',
+      columns: <String>['sql'],
+      where: "type = 'table' AND name = ?",
+      whereArgs: <Object?>[DbTables.items],
+      limit: 1,
+    );
+    final containerColumn = itemTable.isNotEmpty &&
+            '${itemTable.first['sql']}'.contains('container')
+        ? 'container'
+        : '0 AS container';
     final items = await db.rawQuery(
-      'SELECT id, sku, name, category, cost_cents, price_cents, quantity '
-      'FROM ${DbTables.items}',
+      'SELECT id, sku, name, category, cost_cents, price_cents, quantity, '
+      '$containerColumn FROM ${DbTables.items}',
     );
     final receipts = await db.rawQuery(
       'SELECT id, customer_id, paid_at, amount_cents, note '
@@ -108,7 +120,7 @@ abstract final class DbKeysReader {
           '${row.readInt('id')}|${row.readString('sku')}':
               '${row.readString('name')}|${row.readString('category')}|'
               '${row.readInt('cost_cents')}|${row.readInt('price_cents')}|'
-              '${row.readInt('quantity')}',
+              '${row.readInt('quantity')}|${row.readInt('container')}',
       },
       receipts: <String, String>{
         for (final row in receipts)

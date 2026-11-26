@@ -91,6 +91,7 @@ abstract final class InvoiceSyncPayload {
             'name': line.itemName,
             'category': line.category,
             'sku': line.sku,
+            'container': line.container,
             'unit': line.unit,
             'quantity': line.quantity,
             'unit_cost_cents': line.unitCost.cents,

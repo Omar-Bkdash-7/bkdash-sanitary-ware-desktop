@@ -67,6 +67,7 @@ class PurchaseRepository {
           'item_name': line.itemName,
           'category': line.category,
           'sku': line.sku,
+          'container': line.container,
           'unit': line.unit,
           'quantity': line.quantity,
           'unit_cost_cents': line.unitCost.cents,
@@ -107,6 +108,7 @@ class PurchaseRepository {
         'category',
         'name',
         'sku',
+        'container',
         'unit',
         'quantity',
         'cost_cents',
@@ -142,6 +144,7 @@ class PurchaseRepository {
       itemName: row['name']! as String,
       category: row['category']! as String,
       sku: row['sku']! as String,
+      container: (row['container'] as int?) ?? 0,
       unit: row['unit']! as String,
       quantity: line.quantity,
       unitCost: line.unitCost,
@@ -167,6 +170,7 @@ class PurchaseRepository {
         'category': category,
         'name': name,
         'sku': sku,
+        'container': line.container,
         'unit': unit,
         'cost_cents': line.unitCost.cents,
         'price_cents': line.salePrice.cents,
@@ -179,6 +183,7 @@ class PurchaseRepository {
         itemName: name,
         category: category,
         sku: sku,
+        container: line.container,
         unit: unit,
         quantity: line.quantity,
         unitCost: line.unitCost,
@@ -188,7 +193,9 @@ class PurchaseRepository {
         previousCost: line.unitCost,
       );
     } on DatabaseException catch (error) {
-      if (error.isUniqueConstraintError()) throw DuplicateSkuException(sku);
+      if (error.isUniqueConstraintError()) {
+        throw DuplicateSkuException(sku, container: line.container);
+      }
       rethrow;
     }
   }
@@ -524,6 +531,7 @@ final class _PreparedPurchaseLine {
     required this.itemName,
     required this.category,
     required this.sku,
+    required this.container,
     required this.unit,
     required this.quantity,
     required this.unitCost,
@@ -535,6 +543,7 @@ final class _PreparedPurchaseLine {
   final String itemName;
   final String category;
   final String sku;
+  final int container;
   final String unit;
   final int quantity;
   final Money unitCost;

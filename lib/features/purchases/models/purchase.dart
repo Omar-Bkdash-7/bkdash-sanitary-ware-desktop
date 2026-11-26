@@ -56,6 +56,7 @@ final class PurchaseLineRecord {
     required this.itemName,
     required this.category,
     required this.sku,
+    this.container = 0,
     required this.unit,
     required this.quantity,
     required this.unitCost,
@@ -66,6 +67,7 @@ final class PurchaseLineRecord {
         itemName: row['item_name']! as String,
         category: row['category']! as String,
         sku: row['sku']! as String,
+        container: (row['container'] as int?) ?? 0,
         unit: row['unit']! as String,
         quantity: row['quantity']! as int,
         unitCost: Money(row['unit_cost_cents']! as int),
@@ -74,6 +76,10 @@ final class PurchaseLineRecord {
   final String itemName;
   final String category;
   final String sku;
+
+  /// The container the pieces came from (`0` when not from one).
+  final int container;
+
   final String unit;
   final int quantity;
   final Money unitCost;

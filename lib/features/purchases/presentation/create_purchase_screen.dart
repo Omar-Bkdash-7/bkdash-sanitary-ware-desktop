@@ -327,7 +327,9 @@ class _PurchaseLineTile extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      line.itemName,
+                      line.container > 0
+                          ? '${line.itemName}  •  حاوية ${line.container}'
+                          : line.itemName,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -518,7 +520,11 @@ class _PurchaseLineEditDialogState extends State<_PurchaseLineEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.line.itemName),
+      title: Text(
+        widget.line.container > 0
+            ? '${widget.line.itemName}  •  حاوية ${widget.line.container}'
+            : widget.line.itemName,
+      ),
       content: Form(
         key: _formKey,
         child: Column(

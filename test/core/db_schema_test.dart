@@ -7,6 +7,12 @@ void main() {
     'every table is created and the purchase tables are part of version 2',
     () {
       final schema = DbSchema.createStatements.join('\n');
+      expect(schema, contains('container INTEGER NOT NULL DEFAULT 0'));
+      expect(
+        schema,
+        contains('CREATE UNIQUE INDEX idx_items_sku_container'),
+      );
+
       for (final table in DbTables.all) {
         expect(
           schema,
@@ -30,6 +36,16 @@ void main() {
     },
   );
 
+  test('the container migration rebuilds items and keeps the links', () {
+    final upgrade = DbSchema.upgradeTo3.join('\n');
+    expect(upgrade, contains('CREATE TEMP TABLE _item_links'));
+    expect(upgrade, contains('DROP TABLE items'));
+    expect(upgrade, contains('ALTER TABLE items_new RENAME TO items'));
+    expect(upgrade, contains('idx_items_sku_container'));
+    expect(upgrade, contains('UPDATE invoice_items SET item_id'));
+    expect(upgrade, contains('UPDATE purchase_items SET item_id'));
+  });
+
   test('a version 1 backup stays valid after purchases were added', () {
     expect(DbTables.requiredForVersion(1), DbTables.version1);
     expect(DbTables.requiredForVersion(2), DbTables.all);
@@ -38,6 +54,6 @@ void main() {
   });
 
   test('the database version matches the latest schema', () {
-    expect(AppConstants.databaseVersion, 2);
+    expect(AppConstants.databaseVersion, 3);
   });
 }

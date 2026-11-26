@@ -102,6 +102,8 @@ class _ItemPickerState extends State<_ItemPicker> {
                         title: Text(item.name),
                         subtitle: Row(
                           children: [
+                            if (item.container > 0)
+                              Text('حاوية ${item.container}  •  '),
                             MoneyText(item.price),
                             Text(
                               item.isOutOfStock

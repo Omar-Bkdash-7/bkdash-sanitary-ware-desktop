@@ -11,6 +11,7 @@ final class InvoiceLine {
     required this.itemName,
     required this.category,
     required this.sku,
+    this.container = 0,
     required this.unit,
     required this.quantity,
     required this.unitCost,
@@ -23,6 +24,7 @@ final class InvoiceLine {
     itemName: item.name,
     category: item.category,
     sku: item.sku,
+    container: item.container,
     unit: item.unit,
     quantity: quantity,
     unitCost: item.cost,
@@ -34,6 +36,10 @@ final class InvoiceLine {
   final String itemName;
   final String category;
   final String sku;
+
+  /// The container the pieces came from (`0` when not from one).
+  final int container;
+
   final String unit;
   final int quantity;
   final Money unitCost;
@@ -50,6 +56,7 @@ final class InvoiceLine {
     itemName: itemName,
     category: category,
     sku: sku,
+    container: container,
     unit: unit,
     quantity: quantity ?? this.quantity,
     unitCost: unitCost,

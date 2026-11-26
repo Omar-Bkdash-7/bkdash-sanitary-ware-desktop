@@ -65,7 +65,11 @@ class InventoryController extends BaseController {
       if (query.isEmpty) return true;
       return normalizeForSearch(item.name).contains(query) ||
           normalizeForSearch(item.sku).contains(query) ||
-          normalizeForSearch(item.notes).contains(query);
+          normalizeForSearch(item.notes).contains(query) ||
+          (item.container > 0 &&
+              normalizeForSearch(
+                'حاوية ${item.container}',
+              ).contains(query));
     }).toList();
   }
 

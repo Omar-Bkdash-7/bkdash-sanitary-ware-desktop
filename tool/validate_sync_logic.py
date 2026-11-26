@@ -109,6 +109,7 @@ def extract_queries(tables: dict[str, str]) -> list[str]:
         literals = re.findall(r"'((?:[^'\\]|\\.)*)'", body)
         sql = "".join(literals)
         sql = re.sub(r"\$\{DbTables\.(\w+)\}", lambda m: tables[m.group(1)], sql)
+        sql = sql.replace('$containerColumn', 'container')
         queries.append(sql)
     return queries
 
@@ -135,7 +136,10 @@ def read_keys(conn: sqlite3.Connection) -> dict:
     return {
         "invoices": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}|{r[5]}" for r in invoices},
         "customers": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}" for r in customers},
-        "items": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}|{r[5]}|{r[6]}" for r in items},
+        "items": {
+            f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}|{r[5]}|{r[6]}|{r[7]}"
+            for r in items
+        },
         "receipts": {f"{r[0]}|{r[1]}|{r[2]}": f"{r[3]}|{r[4]}" for r in receipts},
         "purchases": {f"{r[0]}|{r[2]}": f"{r[1]}|{r[3]}|{r[4]}|{r[5]}|{r[6]}|{r[7]}" for r in purchases},
         "payouts": {f"{r[0]}|{r[1]}|{r[2]}": f"{r[3]}|{r[4]}" for r in payouts},

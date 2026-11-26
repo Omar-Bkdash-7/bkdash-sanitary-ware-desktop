@@ -44,6 +44,7 @@ void main() {
     expect(workbook, contains('name="المخزون"'));
     expect(sheet, contains('rightToLeft="1"'));
     expect(sheet, contains('الصنف'));
+    expect(sheet, contains('الحاوية'));
     expect(sheet, contains('حنفية &quot;ممتازة&quot;, نحاس &amp; &lt;سعر&gt;'));
     expect(sheet, contains('<v>45.0</v>'));
     expect(sheet, contains('<v>65.0</v>'));

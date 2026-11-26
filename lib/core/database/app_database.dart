@@ -91,6 +91,16 @@ final class AppDatabase {
         batch.execute(statement);
       }
     }
+    if (oldVersion < 3) {
+      // A version 1 database gets the purchase tables above, and they
+      // already carry the container column.
+      if (oldVersion >= 2) {
+        batch.execute(DbSchema.addContainerToPurchaseItems);
+      }
+      for (final statement in DbSchema.upgradeTo3) {
+        batch.execute(statement);
+      }
+    }
     await batch.commit(noResult: true);
   }
 

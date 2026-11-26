@@ -47,7 +47,8 @@ CREATE TABLE items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   category TEXT NOT NULL,
   name TEXT NOT NULL,
-  sku TEXT NOT NULL UNIQUE,
+  sku TEXT NOT NULL,
+  container INTEGER NOT NULL DEFAULT 0 CHECK (container >= 0),
   unit TEXT NOT NULL DEFAULT 'قطعة',
   cost_cents INTEGER NOT NULL CHECK (cost_cents >= 0),
   price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
@@ -55,7 +56,9 @@ CREATE TABLE items (
   notes TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 )''',
+    'CREATE UNIQUE INDEX idx_items_sku_container ON items (sku, container)',
     'CREATE INDEX idx_items_category ON items (category)',
+    'CREATE INDEX idx_items_container ON items (container)',
     '''
 CREATE TABLE customers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +94,7 @@ CREATE TABLE invoice_items (
   item_name TEXT NOT NULL,
   category TEXT NOT NULL,
   sku TEXT NOT NULL,
+  container INTEGER NOT NULL DEFAULT 0 CHECK (container >= 0),
   unit TEXT NOT NULL,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   unit_cost_cents INTEGER NOT NULL CHECK (unit_cost_cents >= 0),
@@ -122,6 +126,60 @@ CREATE TABLE payments (
 
   /// The statements added by database version 2 (purchases from customers).
   static const List<String> upgradeTo2 = _purchaseStatements;
+
+  /// The statements added by database version 3 (containers).
+  ///
+  /// `items.sku` was `UNIQUE` on its own before containers, and SQLite can
+  /// only drop such a constraint by rebuilding the table. The rows keep
+  /// their ids; the child links are saved first because dropping the parent
+  /// table fires `ON DELETE SET NULL`, and are restored right after.
+  static const List<String> upgradeTo3 = <String>[
+    'ALTER TABLE invoice_items ADD COLUMN container INTEGER NOT NULL DEFAULT 0 CHECK (container >= 0)',
+    'DROP TABLE IF EXISTS _item_links',
+    'DROP TABLE IF EXISTS _purchase_item_links',
+    'CREATE TEMP TABLE _item_links AS SELECT id, item_id FROM invoice_items WHERE item_id IS NOT NULL',
+    'CREATE TEMP TABLE _purchase_item_links AS '
+        'SELECT id, item_id FROM purchase_items WHERE item_id IS NOT NULL',
+    '''
+CREATE TABLE items_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL,
+  name TEXT NOT NULL,
+  sku TEXT NOT NULL,
+  container INTEGER NOT NULL DEFAULT 0 CHECK (container >= 0),
+  unit TEXT NOT NULL DEFAULT 'قطعة',
+  cost_cents INTEGER NOT NULL CHECK (cost_cents >= 0),
+  price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
+  quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+)''',
+    '''
+INSERT INTO items_new (id, category, name, sku, container, unit,
+  cost_cents, price_cents, quantity, notes, created_at)
+SELECT id, category, name, sku, 0, unit, cost_cents, price_cents,
+  quantity, notes, created_at FROM items''',
+    'DROP TABLE items',
+    'ALTER TABLE items_new RENAME TO items',
+    'CREATE UNIQUE INDEX idx_items_sku_container ON items (sku, container)',
+    'CREATE INDEX idx_items_category ON items (category)',
+    'CREATE INDEX idx_items_container ON items (container)',
+    'UPDATE invoice_items SET item_id = '
+        '(SELECT item_id FROM _item_links WHERE _item_links.id = invoice_items.id) '
+        'WHERE id IN (SELECT id FROM _item_links)',
+    'UPDATE purchase_items SET item_id = '
+        '(SELECT item_id FROM _purchase_item_links '
+        'WHERE _purchase_item_links.id = purchase_items.id) '
+        'WHERE id IN (SELECT id FROM _purchase_item_links)',
+    'DROP TABLE _item_links',
+    'DROP TABLE _purchase_item_links',
+  ];
+
+  /// `purchase_items` is created by [upgradeTo2] with the column already, so
+  /// only a database that already had the purchase tables needs this.
+  static const String addContainerToPurchaseItems =
+      'ALTER TABLE purchase_items ADD COLUMN container INTEGER NOT NULL DEFAULT 0 '
+      'CHECK (container >= 0)';
 
   /// Purchases, their lines and the money paid to the customer.
   ///
@@ -157,6 +215,7 @@ CREATE TABLE purchase_items (
   item_name TEXT NOT NULL,
   category TEXT NOT NULL,
   sku TEXT NOT NULL,
+  container INTEGER NOT NULL DEFAULT 0 CHECK (container >= 0),
   unit TEXT NOT NULL,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   unit_cost_cents INTEGER NOT NULL CHECK (unit_cost_cents >= 0),

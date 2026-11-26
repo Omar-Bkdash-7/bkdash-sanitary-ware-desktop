@@ -8,8 +8,9 @@ import 'package:bkdash_sanitary_ware/features/invoices/presentation/invoice_deta
 import 'package:bkdash_sanitary_ware/features/purchases/presentation/purchase_card.dart';
 import 'package:bkdash_sanitary_ware/features/purchases/presentation/purchase_details_screen.dart';
 import 'package:bkdash_sanitary_ware/features/reports/models/report_models.dart';
-import 'package:bkdash_sanitary_ware/features/reports/presentation/reports_charts.dart';
+import 'package:bkdash_sanitary_ware/features/reports/presentation/category_pie_chart.dart';
 import 'package:bkdash_sanitary_ware/features/reports/presentation/reports_controller.dart';
+import 'package:bkdash_sanitary_ware/features/reports/presentation/sales_bar_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

@@ -1,5 +1,5 @@
 import 'package:bkdash_sanitary_ware/core/presentation/base_controller.dart';
-import 'package:bkdash_sanitary_ware/core/widgets/empty_state.dart';
+import 'package:bkdash_sanitary_ware/core/widgets/error_state.dart';
 import 'package:flutter/material.dart';
 
 /// Shows a spinner, an error with retry, or [builder] depending on [status].

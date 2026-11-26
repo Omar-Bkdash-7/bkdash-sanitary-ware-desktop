@@ -16,6 +16,7 @@ Usage:  python tool/validate_sync_logic.py
 from __future__ import annotations
 
 import re
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -29,6 +30,27 @@ SCHEMA = ROOT / "lib/core/database/db_schema.dart"
 READER = ROOT / "lib/features/phone_sync/data/db_keys_reader.dart"
 
 failures = 0
+
+# Open connections by database path. On Windows a file cannot be deleted while
+# a connection to it is still open, so a copy closes its target first.
+_connections: dict[Path, sqlite3.Connection] = {}
+_temp_dirs: list[Path] = []
+
+
+def connect(path: Path) -> sqlite3.Connection:
+    connection = sqlite3.connect(path)
+    _connections[Path(path).resolve()] = connection
+    return connection
+
+
+def close_all() -> None:
+    """Closes every connection opened here (needed before deleting files)."""
+    for connection in list(_connections.values()):
+        try:
+            connection.close()
+        except sqlite3.Error:
+            pass
+    _connections.clear()
 
 
 def check(name: str, condition: bool, detail: str = "") -> None:
@@ -66,7 +88,7 @@ def load_ddl() -> list[str]:
 
 
 def new_db(path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(path)
+    conn = connect(path)
     conn.execute("PRAGMA foreign_keys = ON")
     for statement in load_ddl():
         conn.execute(statement)
@@ -219,10 +241,15 @@ def add_purchase(conn, at, customer_id, total=5000, paid=2000, qty=3, item_id=1)
 
 def copy_db(src: sqlite3.Connection, dst_path: Path) -> sqlite3.Connection:
     """What VACUUM INTO followed by a restore does: the other side becomes an identical copy."""
+    dst_path = Path(dst_path)
+    # Close a connection left on the destination, or Windows refuses the unlink.
+    previous = _connections.pop(dst_path.resolve(), None)
+    if previous is not None:
+        previous.close()
     if dst_path.exists():
         dst_path.unlink()
     src.execute(f"VACUUM INTO '{dst_path}'")
-    return sqlite3.connect(dst_path)
+    return connect(dst_path)
 
 
 def run() -> None:
@@ -232,6 +259,7 @@ def run() -> None:
     check("عدد الاستعلامات 10", len(queries) == 10, str(len(queries)))
 
     tmp = Path(tempfile.mkdtemp())
+    _temp_dirs.append(tmp)
     phone = new_db(tmp / "phone.db")
     for q in queries:
         try:
@@ -345,9 +373,9 @@ def run() -> None:
           plan(read_keys(same), read_keys(legacy)) == "identical")
 
     # 2.12 The isolated copy (VACUUM INTO) is intact and has the same schema
-    row = sqlite3.connect(tmp / "base.db").execute("PRAGMA integrity_check").fetchone()[0]
+    row = connect(tmp / "base.db").execute("PRAGMA integrity_check").fetchone()[0]
     check("integrity_check للنسخة = ok", row == "ok", row)
-    tables_in_copy = {r[0] for r in sqlite3.connect(tmp / "base.db").execute(
+    tables_in_copy = {r[0] for r in connect(tmp / "base.db").execute(
         "SELECT name FROM sqlite_master WHERE type='table'")}
     check("النسخة تحوي الجداول العشرة", set(tables.values()) <= tables_in_copy)
 
@@ -359,4 +387,10 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    finally:
+        # Close SQLite before removing the temporary folder (required on Windows).
+        close_all()
+        for folder in _temp_dirs:
+            shutil.rmtree(folder, ignore_errors=True)

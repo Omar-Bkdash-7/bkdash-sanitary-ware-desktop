@@ -10,6 +10,8 @@ abstract final class DbTables {
   static const String purchaseItems = 'purchase_items';
   static const String customerPayouts = 'customer_payouts';
   static const String purchasePayments = 'purchase_payments';
+  static const String returns = 'returns';
+  static const String returnItems = 'return_items';
 
   /// The tables of database version 1 (old backups contain only these).
   static const List<String> version1 = <String>[
@@ -21,7 +23,8 @@ abstract final class DbTables {
     customerReceipts,
   ];
 
-  static const List<String> all = <String>[
+  /// The tables of database version 2 (purchases from customers).
+  static const List<String> version2 = <String>[
     ...version1,
     purchases,
     purchaseItems,
@@ -29,12 +32,18 @@ abstract final class DbTables {
     purchasePayments,
   ];
 
+  /// The tables of database version 4 (returns).
+  static const List<String> all = <String>[...version2, returns, returnItems];
+
   /// The tables a backup of [version] must contain.
   ///
-  /// A version 1 backup is still valid after the app learns about purchases:
-  /// the new tables are created by the migration when the file is opened.
-  static List<String> requiredForVersion(int version) =>
-      version >= 2 ? all : version1;
+  /// An older backup is still valid after the app learns about purchases or
+  /// returns: the new tables are created by the migration when it is opened.
+  static List<String> requiredForVersion(int version) {
+    if (version >= 4) return all;
+    if (version >= 2) return version2;
+    return version1;
+  }
 }
 
 /// The SQL that creates the current database schema.
@@ -122,10 +131,14 @@ CREATE TABLE payments (
     'CREATE INDEX idx_payments_date ON payments (paid_date)',
     'CREATE INDEX idx_payments_invoice ON payments (invoice_id)',
     ..._purchaseStatements,
+    ..._returnStatements,
   ];
 
   /// The statements added by database version 2 (purchases from customers).
   static const List<String> upgradeTo2 = _purchaseStatements;
+
+  /// The statements added by database version 4 (returns).
+  static const List<String> upgradeTo4 = _returnStatements;
 
   /// The statements added by database version 3 (containers).
   ///
@@ -173,6 +186,48 @@ SELECT id, category, name, sku, 0, unit, cost_cents, price_cents,
         'WHERE id IN (SELECT id FROM _purchase_item_links)',
     'DROP TABLE _item_links',
     'DROP TABLE _purchase_item_links',
+  ];
+
+  /// Returns: what came back of an invoice, at the prices of that sale.
+  ///
+  /// The invoice is never rewritten, so `total_cents` here is the credit given
+  /// at the sale prices and `refund_cents` is the cash handed back. The rest
+  /// (`total_cents - refund_cents`) cuts the customer's debt.
+  static const List<String> _returnStatements = <String>[
+    '''
+CREATE TABLE returns (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL REFERENCES invoices (id) ON DELETE CASCADE,
+  customer_id INTEGER REFERENCES customers (id) ON DELETE SET NULL,
+  customer_name TEXT NOT NULL,
+  return_date TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  total_cents INTEGER NOT NULL CHECK (total_cents >= 0),
+  cost_cents INTEGER NOT NULL DEFAULT 0 CHECK (cost_cents >= 0),
+  refund_cents INTEGER NOT NULL DEFAULT 0
+    CHECK (refund_cents >= 0 AND refund_cents <= total_cents),
+  notes TEXT NOT NULL DEFAULT ''
+)''',
+    'CREATE INDEX idx_returns_invoice ON returns (invoice_id)',
+    'CREATE INDEX idx_returns_date ON returns (return_date)',
+    'CREATE INDEX idx_returns_customer ON returns (customer_id)',
+    '''
+CREATE TABLE return_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  return_id INTEGER NOT NULL REFERENCES returns (id) ON DELETE CASCADE,
+  invoice_item_id INTEGER REFERENCES invoice_items (id) ON DELETE SET NULL,
+  item_id INTEGER REFERENCES items (id) ON DELETE SET NULL,
+  item_name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  sku TEXT NOT NULL,
+  container INTEGER NOT NULL DEFAULT 0 CHECK (container >= 0),
+  unit TEXT NOT NULL,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  unit_cost_cents INTEGER NOT NULL CHECK (unit_cost_cents >= 0),
+  unit_price_cents INTEGER NOT NULL CHECK (unit_price_cents >= 0)
+)''',
+    'CREATE INDEX idx_return_items_return ON return_items (return_id)',
+    'CREATE INDEX idx_return_items_line ON return_items (invoice_item_id)',
   ];
 
   /// `purchase_items` is created by [upgradeTo2] with the column already, so

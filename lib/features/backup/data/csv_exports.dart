@@ -6,6 +6,7 @@ import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice_line_export.dart';
 import 'package:bkdash_sanitary_ware/features/purchases/models/purchase.dart';
 import 'package:bkdash_sanitary_ware/features/purchases/models/purchase_line_export.dart';
+import 'package:bkdash_sanitary_ware/features/returns/models/return_models.dart';
 
 /// Builds the CSV text of each export (no files, no database: easy to test).
 abstract final class CsvExports {
@@ -170,6 +171,70 @@ abstract final class CsvExports {
         line.unitCost.toPlainString(),
         line.lineTotal.toPlainString(),
       ]);
+    }
+    return csv.build();
+  }
+
+  static String returns(List<ReturnRecord> returns) {
+    final csv = CsvWriter()
+      ..writeRow(<Object?>[
+        'رقم المرتجع',
+        'رقم الفاتورة',
+        'التاريخ',
+        'الزبون',
+        'قيمة المرتجع',
+        'المُعاد نقداً',
+        'خصم من الدين',
+        'ملاحظات',
+      ]);
+    for (final entry in returns) {
+      csv.writeRow(<Object?>[
+        entry.id,
+        entry.invoiceId,
+        AppDates.displayIso(entry.returnDate),
+        entry.customerName,
+        entry.total.toPlainString(),
+        entry.refund.toPlainString(),
+        entry.credit.toPlainString(),
+        entry.notes,
+      ]);
+    }
+    return csv.build();
+  }
+
+  static String returnLines(List<ReturnRecord> returns) {
+    final csv = CsvWriter()
+      ..writeRow(<Object?>[
+        'رقم المرتجع',
+        'رقم الفاتورة',
+        'التاريخ',
+        'الزبون',
+        'الصنف',
+        'اسم المادة',
+        'الرمز',
+        'الحاوية',
+        'الوحدة',
+        'الكمية',
+        'سعر البيع',
+        'إجمالي السطر',
+      ]);
+    for (final entry in returns) {
+      for (final line in entry.lines) {
+        csv.writeRow(<Object?>[
+          entry.id,
+          entry.invoiceId,
+          AppDates.displayIso(entry.returnDate),
+          entry.customerName,
+          line.category,
+          line.itemName,
+          line.sku,
+          line.container,
+          line.unit,
+          line.quantity,
+          line.unitPrice.toPlainString(),
+          line.lineTotal.toPlainString(),
+        ]);
+      }
     }
     return csv.build();
   }

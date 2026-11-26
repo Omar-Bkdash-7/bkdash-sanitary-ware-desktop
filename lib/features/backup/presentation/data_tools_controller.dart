@@ -17,7 +17,9 @@ enum ExportKind {
   invoiceLines('الأصناف المباعة'),
   purchases('الشراء من الزبائن'),
   purchaseLines('الأصناف المشتراة'),
-  customers('الزبائن والأرصدة');
+  customers('الزبائن والأرصدة'),
+  returns('المرتجعات'),
+  returnLines('أصناف المرتجعات');
 
   const ExportKind(this.label);
 
@@ -133,6 +135,8 @@ class DataToolsController extends BaseController {
       ExportKind.purchases => await _exports.exportPurchases(),
       ExportKind.purchaseLines => await _exports.exportPurchaseLines(),
       ExportKind.customers => await _exports.exportCustomers(),
+      ExportKind.returns => await _exports.exportReturns(),
+      ExportKind.returnLines => await _exports.exportReturnLines(),
     };
     await _sharer.shareFile(file, subject: 'بكداش - ${kind.label}');
   });

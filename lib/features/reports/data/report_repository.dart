@@ -8,6 +8,10 @@ import 'package:bkdash_sanitary_ware/features/reports/models/report_models.dart'
 import 'package:sqflite/sqflite.dart';
 
 /// Runs the aggregate queries behind the reports screen.
+///
+/// Every sales number is net of the returns of the same period, so the reports
+/// always add up to what the shop actually kept. Returns are their own
+/// documents: they never rewrite the invoice that sold the pieces.
 class ReportRepository {
   ReportRepository(this._database, this._invoices, this._purchases);
 
@@ -70,18 +74,53 @@ class ReportRepository {
         <Object?>[from, to],
       ),
     );
+    final returns = await db.rawQuery(
+      'SELECT COUNT(*) AS return_count, '
+      'IFNULL(SUM(total_cents), 0) AS credits_cents, '
+      'IFNULL(SUM(refund_cents), 0) AS refunds_cents '
+      'FROM ${DbTables.returns} WHERE return_date BETWEEN ? AND ?',
+      <Object?>[from, to],
+    );
+    final returnedProfit = Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT IFNULL(SUM(li.quantity * '
+        '(li.unit_price_cents - li.unit_cost_cents)), 0) '
+        'FROM ${DbTables.returnItems} li '
+        'JOIN ${DbTables.returns} r ON r.id = li.return_id '
+        'WHERE r.return_date BETWEEN ? AND ?',
+        <Object?>[from, to],
+      ),
+    );
+    // A return cancels part of the debt of the invoice it belongs to, even when
+    // it was made in a later period.
+    final creditedOnPeriodInvoices = Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT IFNULL(SUM(r.total_cents - r.refund_cents), 0) '
+        'FROM ${DbTables.returns} r '
+        'JOIN ${DbTables.invoices} i ON i.id = r.invoice_id '
+        'WHERE i.invoice_date BETWEEN ? AND ?',
+        <Object?>[from, to],
+      ),
+    );
     final row = sales.first;
     final buyback = buybacks.first;
+    final returned = returns.first;
     return ReportSummary(
       invoiceCount: row.readInt('invoice_count'),
       sales: Money(row.readInt('sales_cents')),
       profit: Money(row.readInt('profit_cents')),
       collected: Money(collected ?? 0),
-      outstanding: Money(row.readInt('outstanding_cents')),
+      outstanding: Money(
+        row.readInt('outstanding_cents') - (creditedOnPeriodInvoices ?? 0),
+      ),
       purchaseCount: buyback.readInt('purchase_count'),
       purchases: Money(buyback.readInt('purchases_cents')),
       paidToCustomers: Money(paidToCustomers ?? 0),
       payables: Money(buyback.readInt('payables_cents')),
+      returnCount: returned.readInt('return_count'),
+      returns: Money(returned.readInt('credits_cents')),
+      refundedToCustomers: Money(returned.readInt('refunds_cents')),
+      returnedProfit: Money(returnedProfit ?? 0),
     );
   }
 
@@ -90,36 +129,83 @@ class ReportRepository {
     String to, {
     required bool byMonth,
   }) async {
-    final bucket = byMonth ? 'substr(invoice_date, 1, 7)' : 'invoice_date';
-    final rows = await _database.db.rawQuery(
-      'SELECT $bucket AS bucket, SUM(total_cents) AS sales_cents, '
+    final db = _database.db;
+    final invoiceBucket =
+        byMonth ? 'substr(invoice_date, 1, 7)' : 'invoice_date';
+    final invoices = await db.rawQuery(
+      'SELECT $invoiceBucket AS bucket, SUM(total_cents) AS sales_cents, '
       'SUM(profit_cents) AS profit_cents '
       'FROM ${DbTables.invoices} WHERE invoice_date BETWEEN ? AND ? '
       'GROUP BY bucket ORDER BY bucket',
       <Object?>[from, to],
     );
-    return rows
-        .map(
-          (row) => SalesPoint(
-            bucket: row.readString('bucket'),
-            sales: Money(row.readInt('sales_cents')),
-            profit: Money(row.readInt('profit_cents')),
-          ),
-        )
-        .toList();
+    final returnBucket = byMonth ? 'substr(return_date, 1, 7)' : 'return_date';
+    final credits = await db.rawQuery(
+      'SELECT $returnBucket AS bucket, SUM(total_cents) AS credits_cents '
+      'FROM ${DbTables.returns} WHERE return_date BETWEEN ? AND ? '
+      'GROUP BY bucket',
+      <Object?>[from, to],
+    );
+    final returnProfit = await db.rawQuery(
+      'SELECT $returnBucket AS bucket, '
+      'SUM(li.quantity * (li.unit_price_cents - li.unit_cost_cents)) '
+      'AS profit_cents '
+      'FROM ${DbTables.returnItems} li '
+      'JOIN ${DbTables.returns} r ON r.id = li.return_id '
+      'WHERE r.return_date BETWEEN ? AND ? GROUP BY bucket',
+      <Object?>[from, to],
+    );
+
+    final sales = <String, int>{
+      for (final row in invoices) row.readString('bucket'): row.readInt('sales_cents'),
+    };
+    final profits = <String, int>{
+      for (final row in invoices)
+        row.readString('bucket'): row.readInt('profit_cents'),
+    };
+    final creditByBucket = <String, int>{
+      for (final row in credits)
+        row.readString('bucket'): row.readInt('credits_cents'),
+    };
+    final profitByBucket = <String, int>{
+      for (final row in returnProfit)
+        row.readString('bucket'): row.readInt('profit_cents'),
+    };
+    final buckets = <String>{
+      ...sales.keys,
+      ...creditByBucket.keys,
+    }.toList()..sort();
+    return <SalesPoint>[
+      for (final bucket in buckets)
+        SalesPoint(
+          bucket: bucket,
+          sales: Money((sales[bucket] ?? 0) - (creditByBucket[bucket] ?? 0)),
+          profit: Money((profits[bucket] ?? 0) - (profitByBucket[bucket] ?? 0)),
+        ),
+    ];
   }
 
   Future<List<CategorySales>> _categories(String from, String to) async {
     final rows = await _database.db.rawQuery(
+      'SELECT category, SUM(sales_cents) AS sales_cents, '
+      'SUM(profit_cents) AS profit_cents, SUM(pieces) AS pieces FROM ('
       'SELECT l.category AS category, '
       'SUM(l.quantity * l.unit_price_cents) AS sales_cents, '
-      'SUM(l.quantity * (l.unit_price_cents - l.unit_cost_cents)) AS profit_cents, '
-      'SUM(l.quantity) AS pieces '
+      'SUM(l.quantity * (l.unit_price_cents - l.unit_cost_cents)) '
+      'AS profit_cents, SUM(l.quantity) AS pieces '
       'FROM ${DbTables.invoiceItems} l '
       'JOIN ${DbTables.invoices} i ON i.id = l.invoice_id '
-      'WHERE i.invoice_date BETWEEN ? AND ? '
-      'GROUP BY l.category ORDER BY sales_cents DESC',
-      <Object?>[from, to],
+      'WHERE i.invoice_date BETWEEN ? AND ? GROUP BY l.category '
+      'UNION ALL '
+      'SELECT li.category, -SUM(li.quantity * li.unit_price_cents), '
+      '-SUM(li.quantity * (li.unit_price_cents - li.unit_cost_cents)), '
+      '-SUM(li.quantity) '
+      'FROM ${DbTables.returnItems} li '
+      'JOIN ${DbTables.returns} r ON r.id = li.return_id '
+      'WHERE r.return_date BETWEEN ? AND ? GROUP BY li.category'
+      ') GROUP BY category HAVING SUM(sales_cents) > 0 '
+      'ORDER BY sales_cents DESC',
+      <Object?>[from, to, from, to],
     );
     return rows
         .map(
@@ -135,13 +221,22 @@ class ReportRepository {
 
   Future<List<TopItem>> _topItems(String from, String to) async {
     final rows = await _database.db.rawQuery(
+      'SELECT name, SUM(pieces) AS pieces, SUM(sales_cents) AS sales_cents '
+      'FROM ('
       'SELECT l.item_name AS name, SUM(l.quantity) AS pieces, '
       'SUM(l.quantity * l.unit_price_cents) AS sales_cents '
       'FROM ${DbTables.invoiceItems} l '
       'JOIN ${DbTables.invoices} i ON i.id = l.invoice_id '
-      'WHERE i.invoice_date BETWEEN ? AND ? '
-      'GROUP BY l.item_name ORDER BY pieces DESC, sales_cents DESC LIMIT 10',
-      <Object?>[from, to],
+      'WHERE i.invoice_date BETWEEN ? AND ? GROUP BY l.item_name '
+      'UNION ALL '
+      'SELECT li.item_name, -SUM(li.quantity), '
+      '-SUM(li.quantity * li.unit_price_cents) '
+      'FROM ${DbTables.returnItems} li '
+      'JOIN ${DbTables.returns} r ON r.id = li.return_id '
+      'WHERE r.return_date BETWEEN ? AND ? GROUP BY li.item_name'
+      ') GROUP BY name HAVING SUM(pieces) > 0 '
+      'ORDER BY pieces DESC, sales_cents DESC LIMIT 10',
+      <Object?>[from, to, from, to],
     );
     return rows
         .map(

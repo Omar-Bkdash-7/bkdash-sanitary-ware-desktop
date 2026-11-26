@@ -29,6 +29,7 @@ import 'package:bkdash_sanitary_ware/features/phone_sync/data/phone_sync_service
 import 'package:bkdash_sanitary_ware/features/phone_sync/data/telegram_inbox_service.dart';
 import 'package:bkdash_sanitary_ware/features/purchases/data/purchase_repository.dart';
 import 'package:bkdash_sanitary_ware/features/reports/data/report_repository.dart';
+import 'package:bkdash_sanitary_ware/features/returns/data/return_repository.dart';
 import 'package:bkdash_sanitary_ware/features/security/data/biometric_authenticator.dart';
 import 'package:bkdash_sanitary_ware/features/security/data/security_repository.dart';
 import 'package:bkdash_sanitary_ware/features/settings/data/settings_repository.dart';
@@ -57,6 +58,7 @@ final class AppDependencies {
     required this.invoices,
     required this.payments,
     required this.purchases,
+    required this.returns,
     required this.reports,
     required this.security,
     required this.settings,
@@ -98,6 +100,7 @@ final class AppDependencies {
     final invoices = InvoiceRepository(database, changes);
     final payments = PaymentRepository(database, changes);
     final purchases = PurchaseRepository(database, changes);
+    final returns = ReturnRepository(database, changes);
 
     final backups = BackupService(
       database: database,
@@ -161,6 +164,7 @@ final class AppDependencies {
       invoices: invoices,
       payments: payments,
       purchases: purchases,
+      returns: returns,
       reports: ReportRepository(database, invoices, purchases),
       security: SecurityRepository(store),
       settings: SettingsRepository(store),
@@ -178,6 +182,7 @@ final class AppDependencies {
         items: items,
         invoices: invoices,
         purchases: purchases,
+        returns: returns,
         customers: customers,
         exportDirectory: () async => paths.exports,
       ),
@@ -198,6 +203,7 @@ final class AppDependencies {
   final InvoiceRepository invoices;
   final PaymentRepository payments;
   final PurchaseRepository purchases;
+  final ReturnRepository returns;
   final ReportRepository reports;
   final SecurityRepository security;
   final SettingsRepository settings;

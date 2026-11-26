@@ -64,6 +64,17 @@ abstract final class DbKeysReader {
     } else {
       payouts = const <Map<String, Object?>>[];
     }
+    // A version 3 backup (made before returns existed) has no return tables.
+    final hasReturns = await _tableExists(db, DbTables.returns);
+    final List<Map<String, Object?>> returns;
+    if (hasReturns) {
+      returns = await db.rawQuery(
+        'SELECT id, invoice_id, created_at, customer_name, total_cents, '
+        'refund_cents FROM ${DbTables.returns}',
+      );
+    } else {
+      returns = const <Map<String, Object?>>[];
+    }
     final newestInvoice = await db.rawQuery(
       'SELECT MAX(created_at) AS newest FROM ${DbTables.invoices}',
     );
@@ -86,6 +97,14 @@ abstract final class DbKeysReader {
     } else {
       newestPayout = const <Map<String, Object?>>[];
     }
+    final List<Map<String, Object?>> newestReturn;
+    if (hasReturns) {
+      newestReturn = await db.rawQuery(
+        'SELECT MAX(created_at) AS newest FROM ${DbTables.returns}',
+      );
+    } else {
+      newestReturn = const <Map<String, Object?>>[];
+    }
 
     final newest = <String>[
       (newestInvoice.first['newest'] as String?) ?? '',
@@ -96,6 +115,9 @@ abstract final class DbKeysReader {
       newestPayout.isEmpty
           ? ''
           : (newestPayout.first['newest'] as String?) ?? '',
+      newestReturn.isEmpty
+          ? ''
+          : (newestReturn.first['newest'] as String?) ?? '',
     ]..sort();
 
     return DbKeySets(
@@ -142,6 +164,13 @@ abstract final class DbKeysReader {
           '${row.readInt('id')}|${row.readInt('customer_id')}|'
                   '${row.readString('paid_at')}':
               '${row.readInt('amount_cents')}|${row.readString('note')}',
+      },
+      returns: <String, String>{
+        for (final row in returns)
+          '${row.readInt('id')}|${row.readInt('invoice_id')}':
+              '${row.readString('customer_name')}|'
+              '${row.readInt('total_cents')}|${row.readInt('refund_cents')}|'
+              '${row.readString('created_at')}',
       },
       lastActivity: newest.last,
     );

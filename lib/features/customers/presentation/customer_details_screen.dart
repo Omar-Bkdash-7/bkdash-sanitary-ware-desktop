@@ -202,6 +202,29 @@ class _Statement extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (summary.returnCount > 0) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: StatTile(
+                          label: 'المرتجعات',
+                          color: scheme.error,
+                          value: MoneyText(summary.totalReturns),
+                          caption: '${summary.returnCount} مرتجع',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: StatTile(
+                          label: 'مُعاد نقداً',
+                          color: scheme.info,
+                          value: MoneyText(summary.totalRefunded),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 12),
                 _BalanceBox(summary: summary),
                 const SizedBox(height: 12),

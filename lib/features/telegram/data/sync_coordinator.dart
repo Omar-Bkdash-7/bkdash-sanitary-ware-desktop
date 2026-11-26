@@ -207,6 +207,8 @@ class SyncCoordinator {
         case DataWrite.purchase:
         case DataWrite.purchaseDeleted:
         case DataWrite.payout:
+        case DataWrite.returnCreated:
+        case DataWrite.returnDeleted:
           break;
       }
       await _scheduleSnapshot();

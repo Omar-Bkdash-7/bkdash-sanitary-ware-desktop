@@ -69,6 +69,9 @@ final class CustomerSummary {
     required this.totalReceived,
     required this.totalPurchases,
     required this.totalPaidToCustomer,
+    this.returnCount = 0,
+    this.totalReturns = Money.zero,
+    this.totalRefunded = Money.zero,
   });
 
   factory CustomerSummary.fromRow(Map<String, Object?> row) => CustomerSummary(
@@ -81,6 +84,9 @@ final class CustomerSummary {
     totalPaidToCustomer: Money(
       (row['purchases_paid_cents'] as num?)?.toInt() ?? 0,
     ),
+    returnCount: (row['return_count'] as num?)?.toInt() ?? 0,
+    totalReturns: Money((row['returns_cents'] as num?)?.toInt() ?? 0),
+    totalRefunded: Money((row['refunded_cents'] as num?)?.toInt() ?? 0),
   );
 
   final Customer customer;
@@ -103,6 +109,18 @@ final class CustomerSummary {
   /// Money paid to the customer for those purchases.
   final Money totalPaidToCustomer;
 
+  /// Returns recorded against the customer's invoices.
+  final int returnCount;
+
+  /// Credit given back at the prices of the original sales.
+  final Money totalReturns;
+
+  /// Cash handed back to the customer with those returns.
+  final Money totalRefunded;
+
+  /// The credit that actually settled his invoices (the cash did not).
+  Money get returnsNet => totalReturns - totalRefunded;
+
   /// Unpaid part of the invoices.
   Money get salesOutstanding => totalSales - totalReceived;
 
@@ -110,7 +128,11 @@ final class CustomerSummary {
   Money get purchasesOutstanding => totalPurchases - totalPaidToCustomer;
 
   /// Positive: the customer owes the shop. Negative: the shop owes him.
-  Money get netBalance => salesOutstanding - purchasesOutstanding;
+  ///
+  /// A return cuts the debt by its credit; the cash handed back with it does
+  /// not (it already left the shop).
+  Money get netBalance =>
+      salesOutstanding - purchasesOutstanding - returnsNet;
 
   bool get customerOwes => netBalance.isPositive;
 

@@ -24,6 +24,7 @@
     "lib/features/invoices/**",
     "lib/features/purchases/**",
     "lib/features/reports/**",
+    "lib/features/returns/**",
     "lib/features/security/data/biometric_authenticator.dart",
     "lib/features/security/data/pin_hasher.dart",
     "lib/features/security/data/security_repository.dart",

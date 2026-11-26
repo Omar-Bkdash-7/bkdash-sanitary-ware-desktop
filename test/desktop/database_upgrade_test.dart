@@ -29,9 +29,12 @@ void main() {
         version: 1,
         onCreate: (db, version) async {
           final batch = db.batch();
-          final version1 = DbSchema.createStatements.take(
-            DbSchema.createStatements.length - DbSchema.upgradeTo2.length,
+          // Version 1 ends where the purchase tables start.
+          final purchaseStart = DbSchema.createStatements.indexWhere(
+            (statement) =>
+                statement.contains('CREATE TABLE ${DbTables.purchases}'),
           );
+          final version1 = DbSchema.createStatements.take(purchaseStart);
           for (final statement in version1) {
             // The current statements know containers; version 1 did not.
             if (statement.contains('idx_items_sku_container') ||
@@ -111,7 +114,7 @@ void main() {
     );
     addTearDown(upgraded.close);
 
-    expect(await upgraded.schemaVersion(), 3);
+    expect(await upgraded.schemaVersion(), 4);
     final tables = (await upgraded.db.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     )).map((row) => row['name']).toSet();

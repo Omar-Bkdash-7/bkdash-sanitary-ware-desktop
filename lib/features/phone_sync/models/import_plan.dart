@@ -35,6 +35,7 @@ final class RecordTally {
     this.receipts = 0,
     this.purchases = 0,
     this.payouts = 0,
+    this.returns = 0,
   });
 
   final int invoices;
@@ -43,9 +44,16 @@ final class RecordTally {
   final int receipts;
   final int purchases;
   final int payouts;
+  final int returns;
 
   int get total =>
-      invoices + customers + items + receipts + purchases + payouts;
+      invoices +
+      customers +
+      items +
+      receipts +
+      purchases +
+      payouts +
+      returns;
 
   bool get isEmpty => total == 0;
 }
@@ -61,6 +69,8 @@ final class ImportPlan {
     required this.incomingReceipts,
     required this.currentPayouts,
     required this.incomingPayouts,
+    required this.currentReturns,
+    required this.incomingReturns,
     required this.lost,
     required this.gained,
     required this.changed,
@@ -83,6 +93,8 @@ final class ImportPlan {
   final int incomingReceipts;
   final int currentPayouts;
   final int incomingPayouts;
+  final int currentReturns;
+  final int incomingReturns;
 
   /// Records here that the file lacks: importing deletes them.
   final RecordTally lost;

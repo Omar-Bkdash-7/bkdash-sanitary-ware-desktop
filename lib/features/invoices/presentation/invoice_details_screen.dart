@@ -11,6 +11,8 @@ import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice_caption.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/presentation/create_invoice_screen.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/presentation/invoice_details_controller.dart';
+import 'package:bkdash_sanitary_ware/features/returns/models/return_models.dart';
+import 'package:bkdash_sanitary_ware/features/returns/presentation/return_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,6 +30,7 @@ class InvoiceDetailsScreen extends StatelessWidget {
         return InvoiceDetailsController(
           invoiceId: invoiceId,
           repository: deps.invoices,
+          returns: deps.returns,
           changes: deps.changes,
         )..load();
       },
@@ -59,6 +62,8 @@ class _InvoiceActions extends StatelessWidget {
         switch (value) {
           case 'pdf':
             _sharePdf(context, controller);
+          case 'return':
+            _returnItems(context, controller);
           case 'edit':
             _edit(context);
           case 'delete':
@@ -67,6 +72,7 @@ class _InvoiceActions extends StatelessWidget {
       },
       itemBuilder: (context) => [
         const PopupMenuItem(value: 'pdf', child: Text('مشاركة الفاتورة PDF')),
+        const PopupMenuItem(value: 'return', child: Text('إرجاع أصناف')),
         const PopupMenuItem(value: 'edit', child: Text('تعديل الفاتورة')),
         PopupMenuItem(
           value: 'delete',
@@ -103,6 +109,25 @@ class _InvoiceActions extends StatelessWidget {
         text: InvoiceCaption.build(invoice),
       );
     });
+  }
+
+  /// Takes pieces back: the credit uses the prices of this invoice and the
+  /// pieces return to the inventory row (and container) they came from.
+  Future<void> _returnItems(
+    BuildContext context,
+    InvoiceDetailsController controller,
+  ) async {
+    final details = controller.details;
+    if (details == null) return;
+    final deps = context.read<AppDependencies>();
+    final saved = await showReturnSheet(
+      context,
+      invoice: details.invoice,
+      repository: deps.returns,
+    );
+    if (saved == true && context.mounted) {
+      showAppSnackBar(context, 'تم تسجيل المرتجع وعادت الكميات إلى المخزون');
+    }
   }
 
   Future<void> _edit(BuildContext context) async {
@@ -158,16 +183,56 @@ class _InvoiceDetailsBody extends StatelessWidget {
             title: 'الفاتورة غير موجودة',
           );
         }
-        return _InvoiceView(details: details);
+        return _InvoiceView(
+          details: details,
+          returns: controller.returns,
+          returnedCredit: controller.returnedCredit,
+          refunded: controller.refunded,
+          remaining: controller.remainingAfterReturns,
+        );
       },
     );
   }
 }
 
 class _InvoiceView extends StatelessWidget {
-  const _InvoiceView({required this.details});
+  const _InvoiceView({
+    required this.details,
+    required this.returns,
+    required this.returnedCredit,
+    required this.refunded,
+    required this.remaining,
+  });
 
   final InvoiceDetails details;
+  final List<ReturnRecord> returns;
+  final Money returnedCredit;
+  final Money refunded;
+
+  /// What is still owed after the returns.
+  final Money remaining;
+
+  Future<void> _deleteReturn(
+    BuildContext context,
+    ReturnRecord entry,
+  ) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'حذف المرتجع #${entry.id}',
+      message:
+          'ستُلغى قيمة المرتجع (${entry.total.format()}) من حساب الزبون، وتخرج '
+          'الكميات من المخزون مرة أخرى. لا يمكن التراجع.',
+      confirmLabel: 'حذف المرتجع',
+      destructive: true,
+    );
+    if (!confirmed || !context.mounted) return;
+    final controller = context.read<InvoiceDetailsController>();
+    await runUiAction(
+      context,
+      () => controller.deleteReturn(entry.id),
+      successMessage: 'حُذف المرتجع وأُعيد حساب الفاتورة',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -248,10 +313,47 @@ class _InvoiceView extends StatelessWidget {
                   amount: invoice.profit,
                   color: scheme.info,
                 ),
+                if (returns.isNotEmpty) ...[
+                  const Divider(),
+                  _AmountRow(
+                    label: 'قيمة المرتجعات',
+                    amount: returnedCredit,
+                    color: scheme.error,
+                  ),
+                  _AmountRow(
+                    label: 'مُعاد نقداً',
+                    amount: refunded,
+                    color: scheme.info,
+                  ),
+                  _AmountRow(
+                    label: 'المتبقي بعد المرتجعات',
+                    amount: remaining,
+                    color: remaining.isPositive ? scheme.error : scheme.success,
+                    bold: true,
+                  ),
+                ],
               ],
             ),
           ),
         ),
+        if (returns.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text('المرتجعات', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                for (var i = 0; i < returns.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _ReturnTile(
+                    entry: returns[i],
+                    onDelete: () => _deleteReturn(context, returns[i]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
         if (details.payments.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text('الدفعات', style: theme.textTheme.titleMedium),
@@ -404,6 +506,35 @@ class _LineTile extends StatelessWidget {
           ),
           MoneyText(line.lineTotal, fontWeight: FontWeight.bold),
         ],
+      ),
+    );
+  }
+}
+
+class _ReturnTile extends StatelessWidget {
+  const _ReturnTile({required this.entry, required this.onDelete});
+
+  final ReturnRecord entry;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final pieces = entry.lines.fold<int>(0, (sum, line) => sum + line.quantity);
+    return ListTile(
+      leading: Icon(Icons.assignment_return_outlined, color: scheme.error),
+      title: Text('مرتجع #${entry.id}  •  ${entry.total.format()}'),
+      subtitle: Text(
+        '${AppDates.displayIso(entry.returnDate)}  •  $pieces قطعة'
+        '${entry.refund.isPositive ? '  •  أُعيد نقداً ${entry.refund.format()}' : ''}'
+        '${entry.notes.isNotEmpty ? '\n${entry.notes}' : ''}',
+      ),
+      isThreeLine: entry.notes.isNotEmpty,
+      trailing: IconButton(
+        tooltip: 'حذف المرتجع',
+        icon: const Icon(Icons.undo_rounded),
+        onPressed: onDelete,
       ),
     );
   }

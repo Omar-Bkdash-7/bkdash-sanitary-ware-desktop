@@ -132,10 +132,12 @@ class _ReportBody extends StatelessWidget {
           children: [
             Expanded(
               child: StatTile(
-                label: 'إجمالي المبيعات',
+                label: 'صافي المبيعات',
                 icon: Icons.point_of_sale_rounded,
-                value: MoneyText(summary.sales),
-                caption: '${summary.invoiceCount} فاتورة',
+                value: MoneyText(summary.netSales),
+                caption:
+                    '${summary.invoiceCount} فاتورة • مرتجعات '
+                    '${summary.returns.format()}',
               ),
             ),
             const SizedBox(width: 8),
@@ -144,7 +146,7 @@ class _ReportBody extends StatelessWidget {
                 label: 'صافي الأرباح',
                 icon: Icons.trending_up_rounded,
                 color: scheme.success,
-                value: MoneyText(summary.profit),
+                value: MoneyText(summary.netProfit),
                 caption: 'هامش ${summary.margin.toStringAsFixed(1)}%',
               ),
             ),
@@ -222,13 +224,39 @@ class _ReportBody extends StatelessWidget {
                     ? scheme.error
                     : scheme.success,
                 value: MoneyText(summary.netCash),
-                caption: 'المقبوض ناقص المدفوع للزبائن',
+                caption: 'المقبوض ناقص المدفوع والمرتجع',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: StatTile(
+                label: 'المرتجعات',
+                icon: Icons.assignment_return_outlined,
+                color: scheme.error,
+                value: MoneyText(summary.returns),
+                caption: '${summary.returnCount} مرتجع',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: StatTile(
+                label: 'مُعاد نقداً مع المرتجعات',
+                icon: Icons.undo_rounded,
+                color: scheme.info,
+                value: MoneyText(summary.refundedToCustomers),
+                caption: 'نقد خرج من الصندوق',
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        if (summary.invoiceCount == 0 && summary.purchaseCount == 0)
+        if (summary.invoiceCount == 0 &&
+            summary.purchaseCount == 0 &&
+            summary.returnCount == 0)
           const _NothingSold()
         else ...[
           if (summary.invoiceCount > 0) ...[

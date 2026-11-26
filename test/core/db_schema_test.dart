@@ -46,14 +46,25 @@ void main() {
     expect(upgrade, contains('UPDATE purchase_items SET item_id'));
   });
 
-  test('a version 1 backup stays valid after purchases were added', () {
+  test('an older backup stays valid after returns were added', () {
     expect(DbTables.requiredForVersion(1), DbTables.version1);
-    expect(DbTables.requiredForVersion(2), DbTables.all);
+    expect(DbTables.requiredForVersion(2), DbTables.version2);
+    expect(DbTables.requiredForVersion(3), DbTables.version2);
+    expect(DbTables.requiredForVersion(4), DbTables.all);
     expect(DbTables.version1, isNot(contains(DbTables.purchases)));
-    expect(DbTables.all, containsAll(DbTables.version1));
+    expect(DbTables.version2, isNot(contains(DbTables.returns)));
+    expect(DbTables.all, containsAll(DbTables.version2));
+  });
+
+  test('the returns migration adds both tables', () {
+    final upgrade = DbSchema.upgradeTo4.join('; ');
+    expect(upgrade, contains('CREATE TABLE returns'));
+    expect(upgrade, contains('CREATE TABLE return_items'));
+    expect(upgrade, contains('idx_returns_invoice'));
+    expect(upgrade, contains('REFERENCES invoice_items (id) ON DELETE SET NULL'));
   });
 
   test('the database version matches the latest schema', () {
-    expect(AppConstants.databaseVersion, 3);
+    expect(AppConstants.databaseVersion, 4);
   });
 }

@@ -17,6 +17,7 @@ final class DbKeySets {
     this.receipts = const <String, String>{},
     this.purchases = const <String, String>{},
     this.payouts = const <String, String>{},
+    this.returns = const <String, String>{},
     this.lastActivity = '',
   });
 
@@ -33,7 +34,10 @@ final class DbKeySets {
   /// Money paid to customers for those purchases.
   final Map<String, String> payouts;
 
-  /// The newest invoice, receipt, purchase or payout time
+  /// Pieces returned against invoices.
+  final Map<String, String> returns;
+
+  /// The newest invoice, receipt, purchase, payout or return time
   /// ("2026-11-16T09:41:12"), or empty.
   final String lastActivity;
 
@@ -45,5 +49,6 @@ final class DbKeySets {
       customers.isNotEmpty ||
       receipts.isNotEmpty ||
       purchases.isNotEmpty ||
-      payouts.isNotEmpty;
+      payouts.isNotEmpty ||
+      returns.isNotEmpty;
 }

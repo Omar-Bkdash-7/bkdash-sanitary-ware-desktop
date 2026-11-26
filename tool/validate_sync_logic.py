@@ -84,6 +84,11 @@ def load_ddl() -> list[str]:
             "_purchaseStatements = <String>[", 1
         )[1].split("];", 1)[0]
         statements.extend(statements_of(purchases))
+    if "..._returnStatements" in create:
+        returns = text.split(
+            "_returnStatements = <String>[", 1
+        )[1].split("];", 1)[0]
+        statements.extend(statements_of(returns))
     return statements
 
 
@@ -119,7 +124,7 @@ def read_keys(conn: sqlite3.Connection) -> dict:
     """Python copy of DbKeysReader.read (the queries themselves come from Dart)."""
     tables = load_tables()
     q = extract_queries(tables)
-    assert len(q) == 10, f"متوقع 10 استعلامات في db_keys_reader.dart وُجد {len(q)}"
+    assert len(q) == 12, f"متوقع 12 استعلاماً في db_keys_reader.dart وُجد {len(q)}"
     invoices = conn.execute(q[0]).fetchall()
     customers = conn.execute(q[1]).fetchall()
     items = conn.execute(q[2]).fetchall()
@@ -128,10 +133,13 @@ def read_keys(conn: sqlite3.Connection) -> dict:
     has_payouts = table_exists(conn, tables["customerPayouts"])
     purchases = conn.execute(q[4]).fetchall() if has_purchases else []
     payouts = conn.execute(q[5]).fetchall() if has_payouts else []
-    newest_invoice = conn.execute(q[6]).fetchone()[0] or ""
-    newest_receipt = conn.execute(q[7]).fetchone()[0] or ""
-    newest_purchase = conn.execute(q[8]).fetchone()[0] or "" if has_purchases else ""
-    newest_payout = conn.execute(q[9]).fetchone()[0] or "" if has_payouts else ""
+    has_returns = table_exists(conn, tables["returns"])
+    returns = conn.execute(q[6]).fetchall() if has_returns else []
+    newest_invoice = conn.execute(q[7]).fetchone()[0] or ""
+    newest_receipt = conn.execute(q[8]).fetchone()[0] or ""
+    newest_purchase = conn.execute(q[9]).fetchone()[0] or "" if has_purchases else ""
+    newest_payout = conn.execute(q[10]).fetchone()[0] or "" if has_payouts else ""
+    newest_return = conn.execute(q[11]).fetchone()[0] or "" if has_returns else ""
     # Columns in the same order as the SELECT inside Dart
     return {
         "invoices": {f"{r[0]}|{r[1]}": f"{r[2]}|{r[3]}|{r[4]}|{r[5]}" for r in invoices},
@@ -143,7 +151,13 @@ def read_keys(conn: sqlite3.Connection) -> dict:
         "receipts": {f"{r[0]}|{r[1]}|{r[2]}": f"{r[3]}|{r[4]}" for r in receipts},
         "purchases": {f"{r[0]}|{r[2]}": f"{r[1]}|{r[3]}|{r[4]}|{r[5]}|{r[6]}|{r[7]}" for r in purchases},
         "payouts": {f"{r[0]}|{r[1]}|{r[2]}": f"{r[3]}|{r[4]}" for r in payouts},
-        "last": sorted([newest_invoice, newest_receipt, newest_purchase, newest_payout])[-1],
+        "returns": {
+            f"{r[0]}|{r[1]}": f"{r[3]}|{r[4]}|{r[5]}|{r[2]}" for r in returns
+        },
+        "last": sorted([
+            newest_invoice, newest_receipt, newest_purchase, newest_payout,
+            newest_return,
+        ])[-1],
     }
 
 
@@ -164,13 +178,14 @@ def table_exists(conn: sqlite3.Connection, table: str) -> bool:
 def has_user_data(keys: dict) -> bool:
     return bool(
         keys["invoices"] or keys["customers"] or keys["receipts"]
-        or keys["purchases"] or keys["payouts"]
+        or keys["purchases"] or keys["payouts"] or keys["returns"]
     )
 
 
 def plan(local: dict, incoming: dict) -> str:
     """A literal Python copy of ImportPlanner.compare."""
-    names = ("invoices", "customers", "items", "receipts", "purchases", "payouts")
+    names = ("invoices", "customers", "items", "receipts", "purchases",
+             "payouts", "returns")
     lost = sum(missing(local[n], incoming[n]) for n in names)
     gained = sum(missing(incoming[n], local[n]) for n in names)
     changed = sum(different(local[n], incoming[n]) for n in names)
@@ -260,7 +275,7 @@ def run() -> None:
     tables = load_tables()
     print("1) الاستعلامات المستخرجة من db_keys_reader.dart")
     queries = extract_queries(tables)
-    check("عدد الاستعلامات 10", len(queries) == 10, str(len(queries)))
+    check("عدد الاستعلامات 12", len(queries) == 12, str(len(queries)))
 
     tmp = Path(tempfile.mkdtemp())
     _temp_dirs.append(tmp)
@@ -369,19 +384,34 @@ def run() -> None:
     # 2.11 An old version 1 copy without purchase tables is read and compared safely
     legacy = copy_db(base, tmp / "legacy.db")
     legacy.execute("PRAGMA foreign_keys = OFF")
-    for table in ("purchase_payments", "purchase_items", "customer_payouts", "purchases"):
+    for table in ("purchase_payments", "purchase_items", "customer_payouts",
+                  "purchases", "return_items", "returns"):
         legacy.execute(f"DROP TABLE {table}")
     legacy.execute("PRAGMA user_version = 1")
     legacy.commit()
     check("نسخة v1 بلا جداول شراء تُقارن بأمان",
           plan(read_keys(same), read_keys(legacy)) == "identical")
 
-    # 2.12 The isolated copy (VACUUM INTO) is intact and has the same schema
+    # 2.12 A return recorded on the phone is a change the computer must see
+    returned = copy_db(base, tmp / "returned.db")
+    returned.execute(
+        "INSERT INTO returns (invoice_id,customer_id,customer_name,return_date,"
+        "created_at,total_cents,cost_cents,refund_cents,notes)"
+        " VALUES (1,NULL,'زبون نقدي','2026-11-18','2026-11-18T10:00:00',1500,1000,0,'')")
+    returned.execute(
+        "INSERT INTO return_items (return_id,invoice_item_id,item_id,item_name,category,"
+        "sku,container,unit,quantity,unit_cost_cents,unit_price_cents)"
+        " VALUES (1,1,1,'صنف','cat','SKU-1',0,'قطعة',1,1000,1500)")
+    returned.commit()
+    check("مرتجع جديد في الملف = incomingNewer",
+          plan(read_keys(same), read_keys(returned)) == "incomingNewer")
+
+    # 2.13 The isolated copy (VACUUM INTO) is intact and has the same schema
     row = connect(tmp / "base.db").execute("PRAGMA integrity_check").fetchone()[0]
     check("integrity_check للنسخة = ok", row == "ok", row)
     tables_in_copy = {r[0] for r in connect(tmp / "base.db").execute(
         "SELECT name FROM sqlite_master WHERE type='table'")}
-    check("النسخة تحوي الجداول العشرة", set(tables.values()) <= tables_in_copy)
+    check(f"النسخة تحوي الجداول ({len(tables)})", set(tables.values()) <= tables_in_copy)
 
     print()
     if failures:

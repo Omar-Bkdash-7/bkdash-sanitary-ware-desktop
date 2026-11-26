@@ -317,6 +317,13 @@ class _CountsTable extends StatelessWidget {
           plan.lost.payouts,
           plan.gained.payouts,
         ),
+        row(
+          'المرتجعات',
+          plan.currentReturns,
+          plan.incomingReturns,
+          plan.lost.returns,
+          plan.gained.returns,
+        ),
       ],
     );
   }

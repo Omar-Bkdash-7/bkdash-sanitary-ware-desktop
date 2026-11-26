@@ -62,6 +62,10 @@ final class ReportSummary {
     required this.purchases,
     required this.paidToCustomers,
     required this.payables,
+    this.returnCount = 0,
+    this.returns = Money.zero,
+    this.refundedToCustomers = Money.zero,
+    this.returnedProfit = Money.zero,
   });
 
   static const ReportSummary empty = ReportSummary(
@@ -102,11 +106,31 @@ final class ReportSummary {
   /// What is still unpaid on the purchases made in the period.
   final Money payables;
 
-  /// Cash actually kept in the period: received minus paid to customers.
-  Money get netCash => collected - paidToCustomers;
+  /// Returns recorded in the period.
+  final int returnCount;
 
-  /// Profit as a percentage of sales (0 when there are no sales).
-  double get margin => sales.isPositive ? profit.cents * 100 / sales.cents : 0;
+  /// Credit given back in the period, at the prices of the original sales.
+  final Money returns;
+
+  /// Cash handed back to customers with those returns.
+  final Money refundedToCustomers;
+
+  /// The part of the profit given up with the returned pieces.
+  final Money returnedProfit;
+
+  /// Sales after the returns of the period.
+  Money get netSales => sales - returns;
+
+  /// Profit after the profit given up with the returns.
+  Money get netProfit => profit - returnedProfit;
+
+  /// Cash actually kept in the period: received, minus what was paid to
+  /// customers for purchases and minus what was handed back with returns.
+  Money get netCash => collected - paidToCustomers - refundedToCustomers;
+
+  /// Profit as a percentage of the net sales (0 when there are none).
+  double get margin =>
+      netSales.isPositive ? netProfit.cents * 100 / netSales.cents : 0;
 }
 
 /// Sales of one day or one month (a point of the chart).

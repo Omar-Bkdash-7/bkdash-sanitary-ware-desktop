@@ -28,6 +28,12 @@ enum DataWrite {
 
   /// Money was paid to a customer for a purchase.
   payout,
+
+  /// Pieces came back from the customer against an invoice.
+  returnCreated,
+
+  /// A saved return was deleted.
+  returnDeleted,
 }
 
 /// Called after a commit; [invoiceId] is set for the invoice writes.

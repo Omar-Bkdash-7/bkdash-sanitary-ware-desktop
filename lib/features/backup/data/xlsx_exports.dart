@@ -9,6 +9,7 @@ import 'package:bkdash_sanitary_ware/features/invoices/models/invoice.dart';
 import 'package:bkdash_sanitary_ware/features/invoices/models/invoice_line_export.dart';
 import 'package:bkdash_sanitary_ware/features/purchases/models/purchase.dart';
 import 'package:bkdash_sanitary_ware/features/purchases/models/purchase_line_export.dart';
+import 'package:bkdash_sanitary_ware/features/returns/models/return_models.dart';
 
 /// Builds the `.xlsx` workbook of each export (no files, no database: easy to
 /// test).
@@ -174,6 +175,70 @@ abstract final class XlsxExports {
         _amount(line.unitCost),
         _amount(line.lineTotal),
       ]);
+    }
+    return xlsx.build();
+  }
+
+  static Uint8List returns(List<ReturnRecord> returns) {
+    final xlsx = XlsxWriter(sheetName: 'المرتجعات')
+      ..writeRow(const <Object?>[
+        'رقم المرتجع',
+        'رقم الفاتورة',
+        'التاريخ',
+        'الزبون',
+        'قيمة المرتجع',
+        'المُعاد نقداً',
+        'خصم من الدين',
+        'ملاحظات',
+      ]);
+    for (final entry in returns) {
+      xlsx.writeRow(<Object?>[
+        entry.id,
+        entry.invoiceId,
+        AppDates.displayIso(entry.returnDate),
+        entry.customerName,
+        _amount(entry.total),
+        _amount(entry.refund),
+        _amount(entry.credit),
+        entry.notes,
+      ]);
+    }
+    return xlsx.build();
+  }
+
+  static Uint8List returnLines(List<ReturnRecord> returns) {
+    final xlsx = XlsxWriter(sheetName: 'أصناف المرتجعات')
+      ..writeRow(const <Object?>[
+        'رقم المرتجع',
+        'رقم الفاتورة',
+        'التاريخ',
+        'الزبون',
+        'الصنف',
+        'اسم المادة',
+        'الرمز',
+        'الحاوية',
+        'الوحدة',
+        'الكمية',
+        'سعر البيع',
+        'إجمالي السطر',
+      ]);
+    for (final entry in returns) {
+      for (final line in entry.lines) {
+        xlsx.writeRow(<Object?>[
+          entry.id,
+          entry.invoiceId,
+          AppDates.displayIso(entry.returnDate),
+          entry.customerName,
+          line.category,
+          line.itemName,
+          line.sku,
+          line.container,
+          line.unit,
+          line.quantity,
+          _amount(line.unitPrice),
+          _amount(line.lineTotal),
+        ]);
+      }
     }
     return xlsx.build();
   }

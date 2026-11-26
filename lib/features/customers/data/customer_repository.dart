@@ -34,6 +34,15 @@ buybacks AS (
          IFNULL(SUM(paid_cents), 0) AS purchases_paid_cents
   FROM purchases
   GROUP BY customer_id
+),
+cancellations AS (
+  SELECT customer_id,
+         COUNT(*) AS return_count,
+         IFNULL(SUM(total_cents), 0) AS returns_cents,
+         IFNULL(SUM(refund_cents), 0) AS refunded_cents
+  FROM returns
+  WHERE customer_id IS NOT NULL
+  GROUP BY customer_id
 )
 SELECT c.id, c.name, c.phone, c.address, c.notes,
        IFNULL(s.invoice_count, 0) AS invoice_count,
@@ -41,10 +50,14 @@ SELECT c.id, c.name, c.phone, c.address, c.notes,
        IFNULL(s.sales_paid_cents, 0) AS sales_paid_cents,
        IFNULL(b.purchase_count, 0) AS purchase_count,
        IFNULL(b.purchases_cents, 0) AS purchases_cents,
-       IFNULL(b.purchases_paid_cents, 0) AS purchases_paid_cents
+       IFNULL(b.purchases_paid_cents, 0) AS purchases_paid_cents,
+       IFNULL(r.return_count, 0) AS return_count,
+       IFNULL(r.returns_cents, 0) AS returns_cents,
+       IFNULL(r.refunded_cents, 0) AS refunded_cents
 FROM customers c
 LEFT JOIN sales s ON s.customer_id = c.id
 LEFT JOIN buybacks b ON b.customer_id = c.id
+LEFT JOIN cancellations r ON r.customer_id = c.id
 ''';
 
   /// Every customer with his totals; the biggest net debtors come first.
@@ -52,7 +65,8 @@ LEFT JOIN buybacks b ON b.customer_id = c.id
     final rows = await _database.db.rawQuery('''
 $_summarySelect
 ORDER BY ((sales_cents - sales_paid_cents) -
-          (purchases_cents - purchases_paid_cents)) DESC,
+          (purchases_cents - purchases_paid_cents) -
+          (returns_cents - refunded_cents)) DESC,
          c.name COLLATE NOCASE
 ''');
     return rows.map(CustomerSummary.fromRow).toList();

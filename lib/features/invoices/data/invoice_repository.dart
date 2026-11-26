@@ -124,6 +124,7 @@ class InvoiceRepository {
       );
       if (header.isEmpty) throw const NotFoundException('الفاتورة غير موجودة.');
       await _ensureNoLaterPayments(txn, id);
+      await _ensureNoReturns(txn, id);
 
       await _restoreStock(txn, id);
       await _takeStock(txn, draft.lines);
@@ -188,6 +189,7 @@ class InvoiceRepository {
       );
       if (header.isEmpty) throw const NotFoundException('الفاتورة غير موجودة.');
       await _ensureNoLaterPayments(txn, id);
+      await _ensureNoReturns(txn, id);
 
       await _restoreStock(txn, id);
       await txn.delete(
@@ -282,6 +284,28 @@ class InvoiceRepository {
     await batch.commit(noResult: true);
   }
 
+  /// Refuses to touch an invoice that already has returns.
+  ///
+  /// The returned pieces are back in the stock and their credit is part of the
+  /// customer's balance; rewriting or deleting the invoice behind them would
+  /// count those pieces twice. Deleting the returns first makes the invoice
+  /// editable again.
+  static Future<void> _ensureNoReturns(DatabaseExecutor txn, int id) async {
+    final rows = await txn.query(
+      DbTables.returns,
+      columns: <String>['id'],
+      where: 'invoice_id = ?',
+      whereArgs: <Object?>[id],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) {
+      throw const ConflictException(
+        'لا يمكن تعديل أو حذف فاتورة صُدر عنها مرتجع، لأن القطع عادت إلى '
+        'المخزون والرصيد تغيّر. احذف المرتجع أولاً ثم عُدّل الفاتورة.',
+      );
+    }
+  }
+
   /// Refuses to touch an invoice that money was later collected against.
   ///
   /// Such a payment belongs to the customer's ledger (it may cover several
@@ -317,10 +341,14 @@ class InvoiceRepository {
   }) async {
     if (customerId == null) return Money.zero;
     final rows = await _database.db.rawQuery(
-      'SELECT IFNULL(SUM(total_cents - paid_cents), 0) AS debt '
-      'FROM ${DbTables.invoices} '
-      'WHERE customer_id = ? AND id < ? AND total_cents > paid_cents',
-      <Object?>[customerId, invoiceId],
+      'SELECT '
+      '(SELECT IFNULL(SUM(total_cents - paid_cents), 0) '
+      ' FROM ${DbTables.invoices} WHERE customer_id = ? AND id < ?) - '
+      '(SELECT IFNULL(SUM(r.total_cents - r.refund_cents), 0) '
+      ' FROM ${DbTables.returns} r '
+      ' JOIN ${DbTables.invoices} i ON i.id = r.invoice_id '
+      ' WHERE i.customer_id = ? AND i.id < ?) AS debt',
+      <Object?>[customerId, invoiceId, customerId, invoiceId],
     );
     return Money((rows.first['debt'] as int?) ?? 0);
   }

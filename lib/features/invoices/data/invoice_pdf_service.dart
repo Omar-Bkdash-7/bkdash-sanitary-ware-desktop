@@ -447,7 +447,9 @@ class InvoicePdfService {
             pw.Divider(color: _line, height: 8),
             line('دين سابق على الزبون', previousDebt, color: _muted),
             line(
-              'إجمالي المتبقي على الزبون',
+              // Purchases made from the customer settle his balance too, so
+              // this line only speaks about his invoices.
+              'إجمالي المتبقي على فواتيره',
               after,
               bold: true,
               color: _danger,

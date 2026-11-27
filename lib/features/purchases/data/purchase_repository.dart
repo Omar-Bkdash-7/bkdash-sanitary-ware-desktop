@@ -399,15 +399,23 @@ class PurchaseRepository {
         .toList();
   }
 
-  /// Pays [amount] to [customerId], oldest unpaid purchases first.
+  /// Pays [amount] to [customerId]: oldest unpaid purchases first, then the
+  /// credit of his returns that was never handed back in cash.
   ///
   /// Only the net payable can be paid: when the customer still owes more than
   /// the shop owes him, the settlement goes the other way (a receipt).
+  ///
+  /// The part that no purchase covers is the credit of an old return (the shop
+  /// kept it then). It is paid by adding it to that return's cash, so the
+  /// balance drops by exactly what left the shop and no money is left hanging.
   Future<void> payCustomer({
     required int customerId,
     required Money amount,
     String note = '',
   }) async {
+    if (!amount.isPositive) {
+      throw const ValidationException('المبلغ يجب أن يكون أكبر من صفر.');
+    }
     final now = _clock();
     final paidAt = AppDates.isoDateTime(now);
     final paidDate = AppDates.isoDate(now);
@@ -444,10 +452,11 @@ class PurchaseRepository {
             ),
           )
           .toList();
-      final allocations = PurchasePaymentAllocator.allocate(
-        outstanding,
-        amount,
-      );
+      // A negative balance can come from a return credit alone: there is then
+      // nothing to allocate to a purchase, and the credit is settled below.
+      final allocations = outstanding.isEmpty
+          ? const <PurchasePaymentAllocation>[]
+          : PurchasePaymentAllocator.allocate(outstanding, amount);
 
       final payoutId = await txn
           .insert(DbTables.customerPayouts, <String, Object?>{
@@ -457,6 +466,7 @@ class PurchaseRepository {
             'paid_at': paidAt,
             'paid_date': paidDate,
           });
+      var left = amount.cents;
       for (final allocation in allocations) {
         await txn.insert(DbTables.purchasePayments, <String, Object?>{
           'purchase_id': allocation.purchaseId,
@@ -469,6 +479,37 @@ class PurchaseRepository {
           'UPDATE ${DbTables.purchases} SET paid_cents = paid_cents + ? '
           'WHERE id = ?',
           <Object?>[allocation.amount.cents, allocation.purchaseId],
+        );
+        left -= allocation.amount.cents;
+      }
+
+      // Whatever the purchases could not take is the credit still standing on
+      // the customer's returns: handing it over now is the cash of those
+      // returns, so it is added to their refund instead of being forgotten.
+      if (left > 0) {
+        final credits = await txn.rawQuery(
+          'SELECT id, total_cents - refund_cents AS credit_cents '
+          'FROM ${DbTables.returns} '
+          'WHERE customer_id = ? AND total_cents > refund_cents '
+          'ORDER BY return_date, id',
+          <Object?>[customerId],
+        );
+        for (final row in credits) {
+          if (left == 0) break;
+          final credit = row.readInt('credit_cents');
+          final portion = credit < left ? credit : left;
+          await txn.rawUpdate(
+            'UPDATE ${DbTables.returns} SET refund_cents = refund_cents + ? '
+            'WHERE id = ?',
+            <Object?>[portion, row.readInt('id')],
+          );
+          left -= portion;
+        }
+      }
+      if (left > 0) {
+        throw const ValidationException(
+          'تعذّر توزيع المبلغ على مستحقات الزبون. أعد تحميل حسابه وحاول '
+          'مرة أخرى.',
         );
       }
     });

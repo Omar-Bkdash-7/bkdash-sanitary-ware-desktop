@@ -216,12 +216,16 @@ class _InvoiceView extends StatelessWidget {
     BuildContext context,
     ReturnRecord entry,
   ) async {
+    final cash = entry.refund.isPositive
+        ? ' ويُلغى أيضاً مبلغ ${entry.refund.format()} أُعيد للزبون نقداً معه، '
+              'فسيصبح ديناً عليه من جديد.'
+        : '';
     final confirmed = await showConfirmDialog(
       context,
       title: 'حذف المرتجع #${entry.id}',
       message:
           'ستُلغى قيمة المرتجع (${entry.total.format()}) من حساب الزبون، وتخرج '
-          'الكميات من المخزون مرة أخرى. لا يمكن التراجع.',
+          'الكميات من المخزون مرة أخرى.$cash لا يمكن التراجع.',
       confirmLabel: 'حذف المرتجع',
       destructive: true,
     );

@@ -67,11 +67,17 @@ class ReportRepository {
       'FROM ${DbTables.purchases} WHERE purchase_date BETWEEN ? AND ?',
       <Object?>[from, to],
     );
+    // Every payout is cash that left the shop, including the one that settles
+    // the credit of an old return (it is not tied to a purchase). The payment
+    // made when the purchase itself was saved has no payout row.
     final paidToCustomers = Sqflite.firstIntValue(
       await db.rawQuery(
-        'SELECT IFNULL(SUM(amount_cents), 0) FROM ${DbTables.purchasePayments} '
-        'WHERE paid_date BETWEEN ? AND ?',
-        <Object?>[from, to],
+        'SELECT (SELECT IFNULL(SUM(amount_cents), 0) '
+        ' FROM ${DbTables.customerPayouts} WHERE paid_date BETWEEN ? AND ?) + '
+        ' (SELECT IFNULL(SUM(amount_cents), 0) '
+        ' FROM ${DbTables.purchasePayments} '
+        ' WHERE payout_id IS NULL AND paid_date BETWEEN ? AND ?) AS total',
+        <Object?>[from, to, from, to],
       ),
     );
     final returns = await db.rawQuery(

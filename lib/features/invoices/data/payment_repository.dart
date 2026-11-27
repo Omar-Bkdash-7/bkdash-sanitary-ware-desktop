@@ -27,6 +27,9 @@ class PaymentRepository {
     required Money amount,
     String note = '',
   }) async {
+    if (!amount.isPositive) {
+      throw const ValidationException('المبلغ يجب أن يكون أكبر من صفر.');
+    }
     final now = _clock();
     final paidAt = AppDates.isoDateTime(now);
     final paidDate = AppDates.isoDate(now);

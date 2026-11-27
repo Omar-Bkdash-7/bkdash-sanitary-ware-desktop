@@ -51,6 +51,7 @@ void main() {
     expect(DbTables.requiredForVersion(2), DbTables.version2);
     expect(DbTables.requiredForVersion(3), DbTables.version2);
     expect(DbTables.requiredForVersion(4), DbTables.all);
+    expect(DbTables.requiredForVersion(5), DbTables.all);
     expect(DbTables.version1, isNot(contains(DbTables.purchases)));
     expect(DbTables.version2, isNot(contains(DbTables.returns)));
     expect(DbTables.all, containsAll(DbTables.version2));
@@ -64,7 +65,17 @@ void main() {
     expect(upgrade, contains('REFERENCES invoice_items (id) ON DELETE SET NULL'));
   });
 
+  test('the settlement marker is added without touching the credit', () {
+    final upgrade = DbSchema.upgradeTo5.join('; ');
+    expect(upgrade, contains('ADD COLUMN settled_at'));
+    expect(upgrade, isNot(contains('refund_cents')));
+    final returns = DbSchema.createStatements.firstWhere(
+      (statement) => statement.contains('CREATE TABLE returns'),
+    );
+    expect(returns, contains('settled_at TEXT NOT NULL DEFAULT \'\''));
+  });
+
   test('the database version matches the latest schema', () {
-    expect(AppConstants.databaseVersion, 4);
+    expect(AppConstants.databaseVersion, 5);
   });
 }

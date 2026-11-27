@@ -499,9 +499,10 @@ class PurchaseRepository {
           final credit = row.readInt('credit_cents');
           final portion = credit < left ? credit : left;
           await txn.rawUpdate(
-            'UPDATE ${DbTables.returns} SET refund_cents = refund_cents + ? '
+            'UPDATE ${DbTables.returns} SET refund_cents = refund_cents + ?, '
+            'settled_at = CASE WHEN settled_at = \'\' THEN ? ELSE settled_at END '
             'WHERE id = ?',
-            <Object?>[portion, row.readInt('id')],
+            <Object?>[portion, paidAt, row.readInt('id')],
           );
           left -= portion;
         }

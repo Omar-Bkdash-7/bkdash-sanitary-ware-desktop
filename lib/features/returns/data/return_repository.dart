@@ -219,17 +219,26 @@ class ReturnRepository {
   /// disappears from the invoice and from the customer's balance.
   ///
   /// Refused when some of those pieces were sold in the meantime, because
-  /// taking them back would drive the stock below zero.
+  /// taking them back would drive the stock below zero, and when a later payout
+  /// settled part of its credit, because the payout would be left without the
+  /// record it settled.
   Future<void> delete(int id) async {
     final invoiceId = await _database.db.transaction((txn) async {
       final headers = await txn.query(
         DbTables.returns,
-        columns: <String>['invoice_id'],
+        columns: <String>['invoice_id', 'settled_at'],
         where: 'id = ?',
         whereArgs: <Object?>[id],
         limit: 1,
       );
       if (headers.isEmpty) throw const NotFoundException('المرتجع غير موجود.');
+      if (headers.first.readString('settled_at').isNotEmpty) {
+        throw const ConflictException(
+          'لا يمكن حذف مرتجع سُوِّي رصيده لاحقاً عبر سند صرف، لأن حذفه يُلغي '
+          'أثر التسوية ويُبقي السند بلا مرجع. اترك المرتجع في السجل، وصحّح '
+          'بعملية جديدة إن لزم.',
+        );
+      }
       final invoiceId = headers.first.readInt('invoice_id');
 
       final lines = await txn.query(

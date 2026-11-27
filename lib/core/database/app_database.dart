@@ -106,6 +106,13 @@ final class AppDatabase {
         batch.execute(statement);
       }
     }
+    // The returns table created just above already carries the column; only a
+    // database that had version 4 needs the extra statement.
+    if (oldVersion == 4) {
+      for (final statement in DbSchema.upgradeTo5) {
+        batch.execute(statement);
+      }
+    }
     await batch.commit(noResult: true);
   }
 

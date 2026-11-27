@@ -226,7 +226,7 @@ def build(source: Path, output: Path) -> dict:
             )
             topped_up += 1
 
-    new.execute("PRAGMA user_version = 4")
+    new.execute("PRAGMA user_version = 5")
     new.commit()
 
     report = {

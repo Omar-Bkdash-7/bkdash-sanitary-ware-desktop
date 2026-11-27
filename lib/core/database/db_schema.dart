@@ -140,6 +140,15 @@ CREATE TABLE payments (
   /// The statements added by database version 4 (returns).
   static const List<String> upgradeTo4 = _returnStatements;
 
+  /// The statement added by database version 5.
+  ///
+  /// `settled_at` is the day a later payout settled part of this return's
+  /// credit (the money itself is already inside `refund_cents`). It exists so
+  /// such a return can not be deleted behind the payout that refers to it.
+  static const List<String> upgradeTo5 = <String>[
+    'ALTER TABLE returns ADD COLUMN settled_at TEXT NOT NULL DEFAULT \'\'',
+  ];
+
   /// The statements added by database version 3 (containers).
   ///
   /// `items.sku` was `UNIQUE` on its own before containers, and SQLite can
@@ -204,10 +213,12 @@ CREATE TABLE returns (
   created_at TEXT NOT NULL,
   total_cents INTEGER NOT NULL CHECK (total_cents >= 0),
   cost_cents INTEGER NOT NULL DEFAULT 0 CHECK (cost_cents >= 0),
-  refund_cents INTEGER NOT NULL DEFAULT 0
+    refund_cents INTEGER NOT NULL DEFAULT 0
     CHECK (refund_cents >= 0 AND refund_cents <= total_cents),
+  settled_at TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT ''
-)''',
+)
+''' ,
     'CREATE INDEX idx_returns_invoice ON returns (invoice_id)',
     'CREATE INDEX idx_returns_date ON returns (return_date)',
     'CREATE INDEX idx_returns_customer ON returns (customer_id)',

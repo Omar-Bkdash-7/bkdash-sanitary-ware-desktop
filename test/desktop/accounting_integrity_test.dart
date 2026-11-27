@@ -295,6 +295,67 @@ void main() {
     expect(report.summary.outstanding, Money.zero);
   });
 
+  test('a return settled by a later payout can not be deleted', () async {
+    final item = await addItem();
+    final customer = await addCustomer();
+    final invoiceId = await invoices.create(
+      InvoiceDraft(
+        customer: customer,
+        paymentMethod: PaymentMethod.cash,
+        lines: <InvoiceLine>[InvoiceLine.fromItem(item, quantity: 2)],
+      ),
+    );
+    final line = (await returns.returnableLines(invoiceId)).single;
+    final returnId = await returns.create(
+      ReturnDraft(
+        invoiceId: invoiceId,
+        lines: <ReturnLine>[ReturnLine.fromReturnable(line, quantity: 1)],
+      ),
+    );
+
+    // Not settled yet: the correction is still allowed.
+    expect(
+      (await database.db.query('returns')).single['settled_at'],
+      '',
+    );
+
+    await purchases.payCustomer(
+      customerId: customer.id,
+      amount: const Money(1500),
+    );
+    expect((await database.db.query('returns')).single['settled_at'], isNotEmpty);
+
+    await expectLater(
+      returns.delete(returnId),
+      throwsA(isA<ConflictException>()),
+    );
+    // The stock, the credit and the marker are untouched by the refusal.
+    expect((await items.findById(item.id))!.quantity, 9);
+    expect(
+      await CustomerBalanceQuery.net(database.db, customer.id),
+      Money.zero,
+    );
+    expect((await database.db.query('returns')).single['settled_at'], isNotEmpty);
+
+    // A second invoice with a plain return keeps its delete path.
+    final otherInvoice = await invoices.create(
+      InvoiceDraft(
+        customer: customer,
+        paymentMethod: PaymentMethod.credit,
+        lines: <InvoiceLine>[InvoiceLine.fromItem(item, quantity: 1)],
+      ),
+    );
+    final otherLine = (await returns.returnableLines(otherInvoice)).single;
+    final otherReturn = await returns.create(
+      ReturnDraft(
+        invoiceId: otherInvoice,
+        lines: <ReturnLine>[ReturnLine.fromReturnable(otherLine, quantity: 1)],
+      ),
+    );
+    await returns.delete(otherReturn);
+    expect((await database.db.query('returns')).length, 1);
+  });
+
   test('missing or negative amounts are refused, not written', () async {
     final item = await addItem();
     final customer = await addCustomer();

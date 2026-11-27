@@ -114,7 +114,7 @@ void main() {
     );
     addTearDown(upgraded.close);
 
-    expect(await upgraded.schemaVersion(), 4);
+    expect(await upgraded.schemaVersion(), 5);
     final tables = (await upgraded.db.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     )).map((row) => row['name']).toSet();
@@ -150,6 +150,72 @@ void main() {
     });
     expect(purchaseId, 1);
     expect((await upgraded.summarize()).purchases, 1);
+  });
+
+  test('a version 4 database gains the settlement marker of returns',
+      () async {
+    final path = p.join(root.path, AppConstants.databaseFileName);
+    final legacy = await factory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 4,
+        onCreate: (db, version) async {
+          final batch = db.batch();
+          for (final statement in DbSchema.createStatements) {
+            // The returns table the way version 4 created it.
+            batch.execute(
+              statement.replaceFirst(
+                "  settled_at TEXT NOT NULL DEFAULT '',\n",
+                '',
+              ),
+            );
+          }
+          await batch.commit(noResult: true);
+        },
+      ),
+    );
+    final invoiceId = await legacy.insert('invoices', <String, Object?>{
+      'customer_id': null,
+      'customer_name': 'زبون نقدي',
+      'customer_phone': '',
+      'payment_method': 'cash',
+      'invoice_date': '2026-11-20',
+      'created_at': '2026-11-20T09:00:00',
+      'total_cents': 2000,
+      'paid_cents': 2000,
+      'profit_cents': 500,
+      'notes': '',
+    });
+    final returnId = await legacy.insert('returns', <String, Object?>{
+      'invoice_id': invoiceId,
+      'customer_id': null,
+      'customer_name': 'زبون نقدي',
+      'return_date': '2026-11-20',
+      'created_at': '2026-11-20T10:00:00',
+      'total_cents': 1000,
+      'cost_cents': 600,
+      'refund_cents': 400,
+      'notes': '',
+    });
+    await legacy.close();
+
+    final upgraded = await AppDatabase.open(
+      factory: factory,
+      directory: root.path,
+      seed: false,
+    );
+    addTearDown(upgraded.close);
+
+    expect(await upgraded.schemaVersion(), 5);
+    final columns = (await upgraded.db.rawQuery('PRAGMA table_info(returns)'))
+        .map((row) => row['name'])
+        .toSet();
+    expect(columns, contains('settled_at'));
+    // The old return keeps its credit untouched.
+    final saved = (await upgraded.db.query('returns')).single;
+    expect(saved['id'], returnId);
+    expect(saved['refund_cents'], 400);
+    expect(saved['settled_at'], '');
   });
 
   test('the same SKU is allowed once per container', () async {

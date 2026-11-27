@@ -218,6 +218,7 @@ final class ReturnRecord {
     required this.cost,
     required this.refund,
     required this.notes,
+    this.settledAt = '',
     this.lines = const <ReturnLineRecord>[],
   });
 
@@ -235,6 +236,7 @@ final class ReturnRecord {
     cost: Money(row['cost_cents']! as int),
     refund: Money(row['refund_cents']! as int),
     notes: (row['notes'] as String?) ?? '',
+    settledAt: (row['settled_at'] as String?) ?? '',
     lines: lines,
   );
 
@@ -258,6 +260,10 @@ final class ReturnRecord {
   /// Cash handed back to the customer.
   final Money refund;
   final String notes;
+
+  /// The day a later payout settled part of this credit (empty when the credit
+  /// is still standing). Such a return can not be deleted.
+  final String settledAt;
   final List<ReturnLineRecord> lines;
 
   /// The debt this return cancels (credit minus the cash returned).

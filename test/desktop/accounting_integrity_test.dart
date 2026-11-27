@@ -286,6 +286,8 @@ void main() {
     expect(saved.id, returnId);
     expect(saved.refund, const Money(1500));
     expect(saved.credit, Money.zero);
+    // The tile shows this date and keeps its delete button disabled.
+    expect(saved.settledAt, isNotEmpty);
 
     // The cash went out once: in the payout the reports count.
     final report = await ReportRepository(database, invoices, purchases).load(

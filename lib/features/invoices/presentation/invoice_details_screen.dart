@@ -13,6 +13,7 @@ import 'package:bkdash_sanitary_ware/features/invoices/presentation/create_invoi
 import 'package:bkdash_sanitary_ware/features/invoices/presentation/invoice_details_controller.dart';
 import 'package:bkdash_sanitary_ware/features/returns/models/return_models.dart';
 import 'package:bkdash_sanitary_ware/features/returns/presentation/return_sheet.dart';
+import 'package:bkdash_sanitary_ware/features/returns/presentation/return_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -351,7 +352,7 @@ class _InvoiceView extends StatelessWidget {
               children: [
                 for (var i = 0; i < returns.length; i++) ...[
                   if (i > 0) const Divider(height: 1),
-                  _ReturnTile(
+                  ReturnTile(
                     entry: returns[i],
                     onDelete: () => _deleteReturn(context, returns[i]),
                   ),
@@ -517,31 +518,3 @@ class _LineTile extends StatelessWidget {
   }
 }
 
-class _ReturnTile extends StatelessWidget {
-  const _ReturnTile({required this.entry, required this.onDelete});
-
-  final ReturnRecord entry;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final pieces = entry.lines.fold<int>(0, (sum, line) => sum + line.quantity);
-    return ListTile(
-      leading: Icon(Icons.assignment_return_outlined, color: scheme.error),
-      title: Text('مرتجع #${entry.id}  •  ${entry.total.format()}'),
-      subtitle: Text(
-        '${AppDates.displayIso(entry.returnDate)}  •  $pieces قطعة'
-        '${entry.refund.isPositive ? '  •  أُعيد نقداً ${entry.refund.format()}' : ''}'
-        '${entry.notes.isNotEmpty ? '\n${entry.notes}' : ''}',
-      ),
-      isThreeLine: entry.notes.isNotEmpty,
-      trailing: IconButton(
-        tooltip: 'حذف المرتجع',
-        icon: const Icon(Icons.undo_rounded),
-        onPressed: onDelete,
-      ),
-    );
-  }
-}
